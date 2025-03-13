@@ -7,14 +7,17 @@ import ImagePreview from '../components/ImagePreview';
 import DownloadButton from '../components/DownloadButton';
 import SimpleImagePreprocessor from '../components/ImagePreprocessor';
 import Loader from '../components/Loader';
+import PixelEditor from '../components/PixelEditor';
 import { removeBackground } from '@imgly/background-removal';
 
 export default function Home() {
   const [sourceImage, setSourceImage] = useState(null);
   const [preprocessedImage, setPreprocessedImage] = useState(null);
   const [pixelatedImage, setPixelatedImage] = useState(null);
+  const [editedImage, setEditedImage] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPreprocessing, setIsPreprocessing] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [colorCount, setColorCount] = useState(8);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -278,6 +281,19 @@ export default function Home() {
     });
   };
 
+  const handleStartEditing = () => {
+    setIsEditing(true);
+  };
+
+  const handleEditingComplete = (result) => {
+    setEditedImage(result);
+    setIsEditing(false);
+  };
+
+  const handleEditingCancel = () => {
+    setIsEditing(false);
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       <Head>
@@ -412,7 +428,14 @@ export default function Home() {
                   colorCount={colorCount}
                 />
               </div>
-            ) : pixelatedImage ? (
+            ) : isEditing ? (
+              <PixelEditor
+                pixelatedImageUrl={pixelatedImage}
+                colorCount={colorCount}
+                onComplete={handleEditingComplete}
+                onCancel={handleEditingCancel}
+              />
+            ) : pixelatedImage || editedImage ? (
               <div>
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                   <div className="flex items-center space-x-4">
@@ -434,6 +457,18 @@ export default function Home() {
                       </svg>
                       New Image
                     </button>
+                    
+                    {!editedImage && (
+                      <button
+                        onClick={handleStartEditing}
+                        className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500 flex items-center"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                        </svg>
+                        Edit Pixels
+                      </button>
+                    )}
                   </div>
 
                   <div className="w-full sm:w-auto flex flex-col sm:items-end">
@@ -500,10 +535,12 @@ export default function Home() {
                     />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-medium mb-2">Pixelated Result</h3>
+                    <h3 className="font-medium mb-2">
+                      {editedImage ? 'Edited Pixel Art' : 'Pixelated Result'}
+                    </h3>
                     <ImagePreview 
                       imageUrl={preprocessedImage}
-                      pixelatedImageUrl={pixelatedImage} 
+                      pixelatedImageUrl={editedImage || pixelatedImage} 
                       forceOriginal={false}
                     />
                   </div>
@@ -511,8 +548,8 @@ export default function Home() {
                 
                 <div className="flex justify-end">
                   <DownloadButton 
-                    imageUrl={pixelatedImage} 
-                    filename={`yopix-pixel-art-${colorCount}colors.png`}
+                    imageUrl={editedImage || pixelatedImage} 
+                    filename={`yopix-pixel-art-${colorCount}colors${editedImage ? '-edited' : ''}.png`}
                   />
                 </div>
               </div>
