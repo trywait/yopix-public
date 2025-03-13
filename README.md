@@ -9,7 +9,6 @@ YoPix is a web application that converts any image into a true 16×16 pixel art 
   - **Interactive Cropping**: Precisely select the portion of your image to convert
   - **Background Removal**: Isolate subjects from their backgrounds using AI
   - **Custom Background Colors**: Choose any color for your background after removal
-  - **Zoom Controls**: Fine-tune your crop with intuitive zoom functionality
 - **Multiple Upload Options**: Drag & drop, file selection, URL input, or Unsplash search
 - **Unsplash Integration**: Search and use high-quality photos directly from Unsplash
 - **Client-Side Processing**: All image conversion happens in the browser
