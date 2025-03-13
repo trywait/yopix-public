@@ -180,4 +180,4 @@ This project uses environment variables for configuration. To set up your local 
    - For Firebase configuration, create a project at [Firebase Console](https://console.firebase.google.com/)
    - For Unsplash API, register for a developer account at [Unsplash Developers](https://unsplash.com/developers)
 
-3. Make sure not to commit your `.env.local` file with real credentials to GitHub! 
+3. Make sure not to commit your `.env.local` file with real credentials to GitHub! # https://github.com/trywait/yopix.git
