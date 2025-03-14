@@ -1,0 +1,23 @@
+/* Mac-specific cursor styles */
+
+/* Eyedropper cursor - Chrome specific */
+.eyedropper-mode {
+  cursor: url('/icons/eyedropper-cursor.svg') 4 20, pointer !important;
+}
+
+/* Add a visible state indicator for eyedropper mode */
+.canvas-wrapper.eyedropper-active {
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5) !important;
+}
+
+/* Add a visible state indicator for color picker mode */
+.canvas-wrapper.color-active {
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.5) !important;
+}
+
+/* Fallbacks for browsers without custom cursor support */
+@supports not (cursor: url('/icons/eyedropper-cursor.svg') 4 20, pointer) {
+  .eyedropper-mode {
+    cursor: crosshair !important;
+  }
+} 

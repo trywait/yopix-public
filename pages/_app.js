@@ -1,4 +1,7 @@
 import '../styles/globals.css';
+import '../public/styles/cursors.css';
+import '../public/icons/eyedropper.css';
+import '../public/styles/mac-cursors.css';
 import Head from 'next/head';
 import { useEffect } from 'react';
 

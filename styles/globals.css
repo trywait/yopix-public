@@ -6,6 +6,7 @@
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;
   --background-end-rgb: 255, 255, 255;
+  --cursor-color: pointer; /* Default, will be overridden with JS */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -53,6 +54,24 @@ textarea {
   opacity: 1;
 }
 
+/* React Colorful custom styles */
+.react-colorful {
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 1 / 1;
+}
+
+.react-colorful__saturation {
+  width: 100% !important;
+  border-radius: 4px !important;
+}
+
+.react-colorful__hue {
+  width: 100% !important;
+  height: 20px !important;
+  margin-top: 10px !important;
+}
+
 /* Pixel art specific styles */
 .pixelated {
   image-rendering: pixelated;
@@ -76,4 +95,26 @@ textarea {
   border: 1px solid #e5e7eb;
   border-radius: 0.375rem;
   padding: 1rem;
+}
+
+/* Cursor styles */
+.cursor-eyedropper {
+  cursor: url('/icons/eyedropper-cursor.svg') 1 20, crosshair !important;
+}
+
+/* Custom cursors */
+.eyedropper-cursor {
+  cursor: url('/icons/eyedropper-cursor.svg') 1 20, crosshair !important;
+}
+
+.color-cursor {
+  /* The actual value will be set via JavaScript */
+  cursor: var(--cursor-color) !important;
+}
+
+/* For browsers that don't support CSS custom properties for cursors */
+@supports not (cursor: var(--cursor-color)) {
+  .color-cursor {
+    cursor: crosshair !important; /* Fallback */
+  }
 } 
