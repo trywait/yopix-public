@@ -1,0 +1,25 @@
+/* Custom cursor styles for YoPix */
+
+/* Eyedropper cursor - multiple formats for cross-browser compatibility */
+.eyedropper-cursor,
+.cursor-eyedropper {
+  /* PNG Base64 version for maximum compatibility */
+  cursor: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAAJZJREFUWMPt10sKgDAMBNCZ3v8SbqXfUWasWBTNQhFmE5LA8AgB3EMNqRx39XzRMeucO9e31RijJQ+lDZYsDcMwDMMwzG8Y5k3M5zWXQimlZSU2xmwMQwhbT4wxljxsrV2b4mJKaetp7/3WExHZekJESx6sRx7Wmrg1aHlI5OXhlVv2Yf2Xf3lV/Zh8xzAMwzAMw7wxD0rYiKDDs38ZAAAAAElFTkSuQmCC') 1 20,
+  /* SVG version as fallback */
+  url('/icons/eyedropper-cursor.svg') 1 20,
+  /* Final fallback */
+  crosshair !important;
+}
+
+/* Color paint cursor - using the color variable */
+.color-cursor {
+  /* Primary approach using CSS variable */
+  cursor: var(--cursor-color),
+  /* Fallback for browsers without CSS variable support */
+  crosshair !important;
+}
+
+/* Default canvas cursor */
+.pixel-canvas {
+  cursor: crosshair;
+} 

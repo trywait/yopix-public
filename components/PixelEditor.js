@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { HexColorPicker } from "react-colorful";
 
 const PixelEditor = ({ 
   pixelatedImageUrl, // The pixelated image result from PixelArtProcessor
+  originalImageUrl, // The original cropped image
   colorCount, // The current color count used for pixelation
   onComplete, // Callback when editing is complete
   onCancel // Callback to cancel and return to previous step
@@ -14,15 +16,10 @@ const PixelEditor = ({
   const [currentStep, setCurrentStep] = useState(0);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [isEyedropper, setIsEyedropper] = useState(false);
+  const [isPainting, setIsPainting] = useState(false); // Track if user is currently painting
+  const [lastPaintedPixel, setLastPaintedPixel] = useState({ x: -1, y: -1 }); // Track last painted pixel to avoid duplicates
   const canvasRef = useRef(null);
   const colorPickerRef = useRef(null);
-  const [colorPickerHue, setColorPickerHue] = useState(0);
-  const [colorPickerSaturation, setColorPickerSaturation] = useState(100);
-  const [colorPickerLightness, setColorPickerLightness] = useState(50);
-  const colorGradientRef = useRef(null);
-  const hueSliderRef = useRef(null);
-  const [isDraggingColorGradient, setIsDraggingColorGradient] = useState(false);
-  const [isDraggingHueSlider, setIsDraggingHueSlider] = useState(false);
 
   // Initialize the editor with the pixelated image
   useEffect(() => {
@@ -74,6 +71,7 @@ const PixelEditor = ({
     const colors = extractColorsFromCanvas(canvas);
     setColors(colors);
     setSelectedColor(colors[0]);
+    setCustomColor(colors[0].hex); // Also set the custom color to match
     
     // Initialize history
     const initialState = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -161,23 +159,95 @@ const PixelEditor = ({
     setShowColorPicker(false);
   };
 
-  // Handle pixel editing
-  const handleCanvasClick = (e) => {
-    if (!editorCanvas || (!selectedColor && !isEyedropper)) return;
+  // Paint a pixel at the given coordinates
+  const paintPixel = (x, y) => {
+    if (!editorCanvas || !selectedColor || isEyedropper) return;
     
-    // Calculate pixel position
+    // Skip if we're painting the same pixel (prevents duplicating history)
+    if (lastPaintedPixel.x === x && lastPaintedPixel.y === y) return;
+    
+    // Draw the selected color at this pixel
+    const ctx = editorCanvas.getContext('2d');
+    ctx.fillStyle = selectedColor.rgba;
+    ctx.fillRect(x, y, 1, 1);
+    
+    setLastPaintedPixel({ x, y });
+  };
+
+  // Calculate pixel coordinates from mouse event
+  const getPixelCoordinates = (e) => {
+    if (!canvasRef.current || !editorCanvas) return null;
+    
     const rect = canvasRef.current.getBoundingClientRect();
     const scaleX = editorCanvas.width / rect.width;
     const scaleY = editorCanvas.height / rect.height;
     
-    const x = Math.floor((e.clientX - rect.left) * scaleX);
-    const y = Math.floor((e.clientY - rect.top) * scaleY);
+    return {
+      x: Math.floor((e.clientX - rect.left) * scaleX),
+      y: Math.floor((e.clientY - rect.top) * scaleY)
+    };
+  };
 
+  // Handle mouse down on canvas
+  const handleCanvasMouseDown = (e) => {
+    if (isEyedropper) {
+      handleCanvasClick(e); // Use existing eyedropper functionality
+      return;
+    }
+    
+    if (!selectedColor) return;
+    
+    // Start painting
+    setIsPainting(true);
+    
+    // Paint the initial pixel
+    const coords = getPixelCoordinates(e);
+    if (coords) {
+      paintPixel(coords.x, coords.y);
+    }
+  };
+
+  // Handle mouse move on canvas
+  const handleCanvasMouseMove = (e) => {
+    if (!isPainting || !selectedColor || isEyedropper) return;
+    
+    const coords = getPixelCoordinates(e);
+    if (coords) {
+      paintPixel(coords.x, coords.y);
+    }
+  };
+
+  // Handle mouse up on canvas
+  const handleCanvasMouseUp = () => {
+    if (isPainting) {
+      setIsPainting(false);
+      setLastPaintedPixel({ x: -1, y: -1 });
+      addToHistory(); // Add to history after a drag operation is complete
+    }
+  };
+
+  // Handle mouse leave on canvas
+  const handleCanvasMouseLeave = () => {
+    if (isPainting) {
+      setIsPainting(false);
+      setLastPaintedPixel({ x: -1, y: -1 });
+      addToHistory(); // Add to history when leaving the canvas
+    }
+  };
+
+  // Modified click handler for individual clicks
+  const handleCanvasClick = (e) => {
+    if (!editorCanvas) return;
+    
+    // Calculate pixel position
+    const coords = getPixelCoordinates(e);
+    if (!coords) return;
+    
     const ctx = editorCanvas.getContext('2d');
     
     if (isEyedropper) {
       // Get the color at the clicked pixel
-      const pixel = ctx.getImageData(x, y, 1, 1).data;
+      const pixel = ctx.getImageData(coords.x, coords.y, 1, 1).data;
       const pickedColor = {
         r: pixel[0],
         g: pixel[1],
@@ -193,12 +263,17 @@ const PixelEditor = ({
       return;
     }
     
-    // Draw the selected color at this pixel
-    ctx.fillStyle = selectedColor.rgba;
-    ctx.fillRect(x, y, 1, 1);
+    if (!selectedColor) return;
     
-    // Add to history
-    addToHistory();
+    // For single clicks, add to history directly
+    if (!isPainting) {
+      // Draw the selected color at this pixel
+      ctx.fillStyle = selectedColor.rgba;
+      ctx.fillRect(coords.x, coords.y, 1, 1);
+      
+      // Add to history
+      addToHistory();
+    }
   };
 
   // Add current state to history
@@ -265,255 +340,134 @@ const PixelEditor = ({
     setIsEyedropper(!isEyedropper);
   };
 
-  // Get hue value from hex color
-  const getHue = (hex) => {
-    const rgb = hexToRgb(hex);
-    if (!rgb) return 0;
-    
-    const { r, g, b } = rgb;
-    
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    
-    let h = 0;
-    
-    if (max === min) {
-      return 0;
-    }
-    
-    const d = max - min;
-    
-    if (max === r) {
-      h = (g - b) / d + (g < b ? 6 : 0);
-    } else if (max === g) {
-      h = (b - r) / d + 2;
-    } else {
-      h = (r - g) / d + 4;
-    }
-    
-    h = Math.round(h * 60);
-    
-    return h;
-  };
-  
   // Update RGB values and convert back to hex
   const updateRgbValue = (component, value) => {
     const rgb = hexToRgb(customColor) || { r: 0, g: 0, b: 0 };
     rgb[component] = Math.max(0, Math.min(255, parseInt(value) || 0));
-    setCustomColor(rgbToHex(rgb.r, rgb.g, rgb.b));
+    const newHex = rgbToHex(rgb.r, rgb.g, rgb.b);
+    setCustomColor(newHex);
+    
+    // Create a temporary color object to immediately update the preview
+    const tempColor = {
+      r: rgb.r,
+      g: rgb.g,
+      b: rgb.b,
+      a: 255,
+      rgba: `rgba(${rgb.r},${rgb.g},${rgb.b},1)`,
+      hex: newHex
+    };
+    setSelectedColor(tempColor);
   };
-
-  // Update HSL values when custom color changes
+  
+  // Update selectedColor when customColor changes
   useEffect(() => {
     if (customColor) {
       const rgb = hexToRgb(customColor);
       if (rgb) {
-        const { h, s, l } = rgbToHsl(rgb.r, rgb.g, rgb.b);
-        setColorPickerHue(h);
-        setColorPickerSaturation(s);
-        setColorPickerLightness(Math.min(l, 100)); // Cap at 100%
+        const tempColor = {
+          r: rgb.r,
+          g: rgb.g,
+          b: rgb.b,
+          a: 255,
+          rgba: `rgba(${rgb.r},${rgb.g},${rgb.b},1)`,
+          hex: customColor
+        };
+        setSelectedColor(tempColor);
       }
     }
   }, [customColor]);
 
-  // Convert RGB to HSL
-  const rgbToHsl = (r, g, b) => {
-    r /= 255;
-    g /= 255;
-    b /= 255;
-    
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    let h, s, l = (max + min) / 2;
-    
-    if (max === min) {
-      h = s = 0; // achromatic
-    } else {
-      const d = max - min;
-      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-      
-      switch (max) {
-        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-        case g: h = (b - r) / d + 2; break;
-        case b: h = (r - g) / d + 4; break;
-        default: h = 0;
-      }
-      
-      h = h / 6;
-    }
-    
-    return { 
-      h: Math.round(h * 360), 
-      s: Math.round(s * 100), 
-      l: Math.round(l * 100) 
-    };
-  };
-  
-  // Convert HSL to RGB with better handling for lightness
-  const hslToRgb = (h, s, l) => {
-    h /= 360;
-    s /= 100;
-    l /= 100;
-    
-    // Ensure valid values (sometimes UI can cause slightly out of bounds values)
-    h = Math.max(0, Math.min(1, h));
-    s = Math.max(0, Math.min(1, s));
-    l = Math.max(0, Math.min(1, l));
-    
-    let r, g, b;
-    
-    if (s === 0) {
-      r = g = b = l;
-    } else {
-      const hue2rgb = (p, q, t) => {
-        if (t < 0) t += 1;
-        if (t > 1) t -= 1;
-        if (t < 1/6) return p + (q - p) * 6 * t;
-        if (t < 1/2) return q;
-        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-        return p;
-      };
-      
-      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-      const p = 2 * l - q;
-      
-      r = hue2rgb(p, q, h + 1/3);
-      g = hue2rgb(p, q, h);
-      b = hue2rgb(p, q, h - 1/3);
-    }
-    
-    return { 
-      r: Math.round(r * 255), 
-      g: Math.round(g * 255), 
-      b: Math.round(b * 255) 
-    };
-  };
-  
-  // Handle click on the color gradient
-  const handleColorGradientClick = (e) => {
-    if (!colorGradientRef.current) return;
-    
-    const rect = colorGradientRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
-    
-    // x = saturation (0% at left, 100% at right)
-    // y = lightness (100% at top, 0% at bottom) - normalized to 0-100
-    const s = Math.round(x * 100);
-    const l = Math.round((1 - y) * 100);
-    
-    setColorPickerSaturation(s);
-    setColorPickerLightness(l);
-    
-    // Update hex color
-    const rgb = hslToRgb(colorPickerHue, s, l);
-    setCustomColor(rgbToHex(rgb.r, rgb.g, rgb.b));
-  };
-  
-  // Handle click on the hue slider
-  const handleHueSliderClick = (e) => {
-    if (!hueSliderRef.current) return;
-    
-    const rect = hueSliderRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    
-    const h = Math.round(x * 360);
-    setColorPickerHue(h);
-    
-    // Update hex color
-    const rgb = hslToRgb(h, colorPickerSaturation, colorPickerLightness);
-    setCustomColor(rgbToHex(rgb.r, rgb.g, rgb.b));
-  };
-
-  // Add event listeners for drag operations
+  // Create canvas for color cursor with direct implementation
   useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (isDraggingColorGradient && colorGradientRef.current) {
-        // Update color based on drag position in the gradient
-        handleColorGradientMove(e);
-      } else if (isDraggingHueSlider && hueSliderRef.current) {
-        // Update hue based on drag position in the slider
-        handleHueSliderMove(e);
+    if (!canvasRef.current) return;
+    
+    try {
+      // Reset classes for visual indicator
+      const canvas = canvasRef.current;
+      canvas.classList.remove('eyedropper-mode', 'color-mode');
+      
+      if (isEyedropper) {
+        // Add visual indicator class
+        canvas.classList.add('eyedropper-mode');
+        
+        // Try three different approaches for eyedropper cursor
+        // 1. Direct base64 PNG
+        const eyedropperCursor = `url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAF7mlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS42LWMxNDUgNzkuMTYzNDk5LCAyMDE4LzA4LzEzLTE2OjQwOjIyICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIgeG1sbnM6cGhvdG9zaG9wPSJodHRwOi8vbnMuYWRvYmUuY29tL3Bob3Rvc2hvcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RFdnQ9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZUV2ZW50IyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ0MgMjAxOSAoTWFjaW50b3NoKSIgeG1wOkNyZWF0ZURhdGU9IjIwMjAtMDEtMzFUMTk6MjM6MjArMDE6MDAiIHhtcDpNb2RpZnlEYXRlPSIyMDIwLTAxLTMxVDE5OjI4OjU3KzAxOjAwIiB4bXA6TWV0YWRhdGFEYXRlPSIyMDIwLTAxLTMxVDE5OjI4OjU3KzAxOjAwIiBkYzpmb3JtYXQ9ImltYWdlL3BuZyIgcGhvdG9zaG9wOkNvbG9yTW9kZT0iMyIgcGhvdG9zaG9wOklDQ1Byb2ZpbGU9InNSR0IgSUVDNjE5NjYtMi4xIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOjc3NzE0YjBkLWI3YmYtNDM5Ny04MzA1LWJkMzQzYWJhNWFmYSIgeG1wTU06RG9jdW1lbnRJRD0iYWRvYmU6ZG9jaWQ6cGhvdG9zaG9wOjQ2MjJlNzFhLTBjNTAtNzg0My04OTRiLWUyODZmMzY5OGUzYiIgeG1wTU06T3JpZ2luYWxEb2N1bWVudElEPSJ4bXAuZGlkOjQ1ZTAxZDczLTFiMTYtNGRkYS04OTRjLWFjMTBmMGNlNWI1ZCI+IDx4bXBNTTpIaXN0b3J5PiA8cmRmOlNlcT4gPHJkZjpsaSBzdEV2dDphY3Rpb249ImNyZWF0ZWQiIHN0RXZ0Omluc3RhbmNlSUQ9InhtcC5paWQ6NDVlMDFkNzMtMWIxNi00ZGRhLTg5NGMtYWMxMGYwY2U1YjVkIiBzdEV2dDp3aGVuPSIyMDIwLTAxLTMxVDE5OjIzOjIwKzAxOjAwIiBzdEV2dDpzb2Z0d2FyZUFnZW50PSJBZG9iZSBQaG90b3Nob3AgQ0MgMjAxOSAoTWFjaW50b3NoKSIvPiA8cmRmOmxpIHN0RXZ0OmFjdGlvbj0ic2F2ZWQiIHN0RXZ0Omluc3RhbmNlSUQ9InhtcC5paWQ6NzczMTRiMGQtYjdiZi00Mzk3LTgzMDUtYmQzNDNhYmE1YWZhIiBzdEV2dDp3aGVuPSIyMDIwLTAxLTMxVDE5OjI4OjU3KzAxOjAwIiBzdEV2dDpzb2Z0d2FyZUFnZW50PSJBZG9iZSBQaG90b3Nob3AgQ0MgMjAxOSAoTWFjaW50b3NoKSIgc3RFdnQ6Y2hhbmdlZD0iLyIvPiA8L3JkZjpTZXE+IDwveG1wTU06SGlzdG9yeT4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz5OJuCqAAAD1UlEQVRYhcWXb0xbVRTAf/e+tlQGlK5/NjJwZOA6HIYxxq2LkWA2IbLAXDJJ+KJZ4heTJX7wA5nJgITs04yx+GViEIiJIURchoFgXAQdbg4iyIzjz9baUWjLKKWlr++d/VFKade+UVA8ybe8957T3/n33HOVKIpC9ZdNS+IgmeMgzUeSm+EQxMQ91gRBTivQaDQaAGTJGDZSy7YsG7MRIQlA2CgPJ2KUjNGxX4bCl8LGTwFZ1mtLAOxs7FyqhNLSUi5cuEBxcTG9vb1ER0ej1+uj9jscDpxOJw6Hg4sXL9La2jpvIAvApk2bNiQnJ09ZrVZycnIoKCigrKzM7/zo6GhSUlJISUmhqKiIs2fPcv36dYaHh/2bJyqKkkbw7HrpKStTkSTB85WPsvVJPc4xF5KQeKIsm8GhW0iSpP3r1m3zNR8UXhQExmGXFcXnLlVwfjQvlxybhS2FuUwojjl1vvxmZGjQnB7wI6pLKyoIQbvbbbOnmZKY9IrYnG7P3NR/uiUVzfN34JwKZXn4wUfPd1cUWXaLSCuQoMKWUqAaFBhODuiJnQOQUeAUiNlCRMSqSk6WxI0Wq/Z8VwX4Ioi2XqqiIQMKCCk0HRMCwQWBFkJ4AEGIuCZScaF/L4Qoz6NMiYAxqECk6UuJkgJ/zQ94nrAr8FpkIRKSEAqg+d8I0IYF8G9NqQJsCVFImrn8XmRJUgUYt29/LDYuPvnfm1P27uygOLfYfSBjb1hFNptNdHV1idHRUZGVlRUW/PT3p8Xlny+LqakpMelyiVcrK8X8AE92dnZlbW1tw8DAQMiT0FdfqBp3bX2mUoQB8J3z8/Mbamtrz9XXh+5O9y9QVV8fAzA3Yjxg8vT09EzU19eXtbS0hASZ2wOCCvbR1tbWnGg0Glf7+/vLmpubQwItc8VGOcnvnZqamka9Xn+yoqLiVE9PT4z6TRBMQVBHUOU8derUyeLi4oYdO3Y4/AwHSA0NIKoEr0dFRUVDbW3tO319fUZ/g2XSZgRoJicnjzU1NZ2w2WzbA+2Wgw56oqsLDA0N5TU3N5+w2+1ZgXZLroDXfRTBurVareVtbW0n+vv7/xbhRQDdYttwtfepUMTGxm5vb28/1tnZuYOlJpQIJTb0+8vHnzpY9Z+SWq12ZfctsCO53JKwAEgzf1Z1Y4Vsl/PfB43RfezffwyzKfQGmHBkXE4nPxw7Rsa+LGw7075XFpHT7XbfMm5Jyz13vu/rUPOeAzTlZGXpvALuDg2z7nEjLvfEg55P3wDhyjYGfZxJMgAAAABJRU5ErkJggg==') 3 16, pointer`;
+        canvas.style.cursor = eyedropperCursor;
+      } else if (selectedColor) {
+        // Add visual indicator class
+        canvas.classList.add('color-mode');
+        
+        // Create a simple color cursor - make it larger (32x32) for better visibility
+        const cursorCanvas = document.createElement('canvas');
+        cursorCanvas.width = 32;
+        cursorCanvas.height = 32;
+        const ctx = cursorCanvas.getContext('2d');
+        
+        // Draw cursor with selected color
+        ctx.clearRect(0, 0, 32, 32);
+        
+        // Draw color square
+        ctx.fillStyle = selectedColor.rgba;
+        ctx.fillRect(0, 0, 32, 32);
+        
+        // Draw strong black border for visibility
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(1, 1, 30, 30);
+        
+        // Draw white inner border for contrast
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(3, 3, 26, 26);
+        
+        // Apply directly to canvas with centered hotspot
+        const dataURL = cursorCanvas.toDataURL('image/png');
+        canvas.style.cursor = `url(${dataURL}) 16 16, crosshair`;
+      } else {
+        // Default cursor
+        canvas.style.cursor = 'crosshair';
       }
-    };
-
-    const handleMouseUp = () => {
-      setIsDraggingColorGradient(false);
-      setIsDraggingHueSlider(false);
-    };
-
-    // Add event listeners
-    if (isDraggingColorGradient || isDraggingHueSlider) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+    } catch (error) {
+      console.error("Error setting cursor:", error);
+      // Fallback to simple CSS cursor
+      if (canvasRef.current) {
+        canvasRef.current.style.cursor = isEyedropper ? 'crosshair' : 'pointer';
+      }
     }
-
-    // Cleanup
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDraggingColorGradient, isDraggingHueSlider]);
-
-  // Handle mouse movement in the color gradient
-  const handleColorGradientMove = (e) => {
-    if (!colorGradientRef.current) return;
-    
-    const rect = colorGradientRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
-    
-    // x = saturation (0% at left, 100% at right)
-    // y = lightness (100% at top, 0% at bottom) - normalized to 0-100
-    const s = Math.round(x * 100);
-    const l = Math.round((1 - y) * 100);
-    
-    setColorPickerSaturation(s);
-    setColorPickerLightness(l);
-    
-    // Update hex color
-    const rgb = hslToRgb(colorPickerHue, s, l);
-    setCustomColor(rgbToHex(rgb.r, rgb.g, rgb.b));
-  };
-  
-  // Handle mouse down in the color gradient
-  const handleColorGradientMouseDown = (e) => {
-    setIsDraggingColorGradient(true);
-    handleColorGradientMove(e); // Update color immediately on click
-  };
-  
-  // Handle mouse movement in the hue slider
-  const handleHueSliderMove = (e) => {
-    if (!hueSliderRef.current) return;
-    
-    const rect = hueSliderRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    
-    const h = Math.round(x * 360);
-    setColorPickerHue(h);
-    
-    // Update hex color
-    const rgb = hslToRgb(h, colorPickerSaturation, colorPickerLightness);
-    setCustomColor(rgbToHex(rgb.r, rgb.g, rgb.b));
-  };
-  
-  // Handle mouse down in the hue slider
-  const handleHueSliderMouseDown = (e) => {
-    setIsDraggingHueSlider(true);
-    handleHueSliderMove(e); // Update hue immediately on click
-  };
+  }, [isEyedropper, selectedColor]);
 
   return (
     <div className="pixel-editor">
       <div className="mb-4">
         <h3 className="text-lg font-semibold">Pixel Editor</h3>
-        <p className="text-sm text-gray-600">Edit your pixel art by clicking on individual pixels</p>
+        <p className="text-sm text-gray-600">Edit your pixel art by clicking or dragging on pixels</p>
       </div>
       
-      <div className="editor-container flex flex-col md:flex-row gap-6">
+      <div className="editor-container grid grid-cols-1 md:grid-cols-12 gap-4">
+        {/* Original image - hidden on small screens */}
+        <div className="hidden md:block md:col-span-4 lg:col-span-3">
+          <h4 className="font-medium mb-2 text-center">Original Image</h4>
+          <div className="border border-gray-300 rounded-lg overflow-hidden bg-white relative aspect-square max-w-md mx-auto shadow-sm">
+            <div className="checkerboard-bg" style={{
+              backgroundImage: 'repeating-conic-gradient(#f0f0f0 0% 25%, #ffffff 0% 50%) 50% / 16px 16px',
+              width: '100%',
+              height: '100%',
+              position: 'absolute'
+            }}></div>
+            {originalImageUrl && (
+              <img 
+                src={originalImageUrl} 
+                alt="Original cropped image" 
+                className="w-full h-full object-contain relative z-10"
+              />
+            )}
+          </div>
+        </div>
+        
         {/* Canvas area */}
-        <div className="flex-1">
-          <div className="canvas-wrapper border border-gray-300 rounded-lg overflow-hidden bg-white relative aspect-square max-w-md mx-auto">
+        <div className="md:col-span-4 lg:col-span-5">
+          <div className={`canvas-wrapper border border-gray-300 rounded-lg overflow-hidden bg-white relative aspect-square max-w-md mx-auto ${isEyedropper ? 'eyedropper-active' : selectedColor ? 'color-active' : ''}`}>
             <div className="checkerboard-bg" style={{
               backgroundImage: 'repeating-conic-gradient(#f0f0f0 0% 25%, #ffffff 0% 50%) 50% / 16px 16px',
               width: '100%',
@@ -523,231 +477,61 @@ const PixelEditor = ({
             <canvas
               ref={canvasRef}
               onClick={handleCanvasClick}
-              className="pixel-canvas"
+              onMouseDown={handleCanvasMouseDown}
+              onMouseMove={handleCanvasMouseMove}
+              onMouseUp={handleCanvasMouseUp}
+              onMouseLeave={handleCanvasMouseLeave}
+              className={`pixel-canvas ${isEyedropper ? 'eyedropper-mode' : selectedColor ? 'color-mode' : ''}`}
               style={{
                 imageRendering: 'pixelated',
                 width: '100%',
                 height: '100%',
-                cursor: isEyedropper ? 'crosshair' : 'pointer',
                 aspectRatio: '1',
                 position: 'relative'
               }}
             />
           </div>
+          
+          {/* Tools immediately below canvas */}
+          <div className="mt-3 flex justify-center space-x-3 mb-4">
+            <button
+              className="px-3 py-1 bg-gray-200 rounded-md disabled:opacity-50"
+              onClick={handleUndo}
+              disabled={currentStep <= 0}
+            >
+              Undo
+            </button>
+            <button
+              className="px-3 py-1 bg-gray-200 rounded-md disabled:opacity-50"
+              onClick={handleRedo}
+              disabled={currentStep >= history.length - 1}
+            >
+              Redo
+            </button>
+          </div>
+          
+          {/* Eyedropper notification moved below canvas */}
+          {isEyedropper && 
+            <p className="bg-blue-100 text-blue-800 p-2 rounded mb-4">
+              <strong>Eyedropper mode active</strong> - Click on a pixel to pick its color
+            </p>
+          }
         </div>
         
         {/* Controls area */}
-        <div className="md:w-64">
-          {/* Color picker */}
-          <div className="mb-4 relative">
-            <h4 className="font-medium mb-2">Add Custom Color</h4>
-            
-            <div className="flex items-center space-x-2">
-              <input
-                type="text"
-                value={customColor}
-                onChange={(e) => setCustomColor(e.target.value)}
-                className="w-24 px-2 py-1 border border-gray-300 rounded-md text-sm"
-                placeholder="#RRGGBB"
-              />
-              <button
-                onClick={() => setShowColorPicker(!showColorPicker)}
-                className="w-8 h-8 border border-gray-300 rounded-md"
-                style={{ backgroundColor: customColor }}
-              ></button>
-              <button
-                onClick={addCustomColor}
-                className="px-2 py-1 bg-blue-500 text-white rounded-md text-sm"
-              >
-                Add
-              </button>
-              <button
-                onClick={toggleEyedropper}
-                className={`w-8 h-8 flex items-center justify-center rounded-md ${isEyedropper ? 'bg-blue-100 border-blue-500 border-2' : 'bg-gray-100 border border-gray-300'}`}
-                title="Eyedropper - Pick color from image"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M6.354 13.354a.5.5 0 01-.708 0l-3-3a.5.5 0 01.708-.708L6 12.293l6.646-6.647a.5.5 0 01.708 0l3 3a.5.5 0 010 .708l-7 7a.5.5 0 01-.708 0l-3-3z" clipRule="evenodd" />
-                </svg>
-              </button>
-            </div>
-            
-            {showColorPicker && (
-              <div 
-                ref={colorPickerRef}
-                className="absolute z-10 mt-1 bg-white rounded-md shadow-lg border border-gray-300"
-                style={{ width: '300px' }}
-              >
-                {/* Main color selection area */}
-                <div className="p-4">
-                  {/* Color gradient area */}
-                  <div 
-                    ref={colorGradientRef}
-                    className="relative mb-3 h-48 rounded overflow-hidden cursor-crosshair"
-                    onClick={handleColorGradientClick}
-                    onMouseDown={handleColorGradientMouseDown}
-                  >
-                    <div 
-                      className="absolute inset-0" 
-                      style={{
-                        backgroundImage: 'linear-gradient(to top, #000, rgba(0,0,0,0)), linear-gradient(to right, #fff, rgba(255,255,255,0))',
-                        backgroundBlendMode: 'normal',
-                        backgroundColor: `hsl(${colorPickerHue}, 100%, 50%)`
-                      }}
-                    ></div>
-                    {/* Color selector circle - positioned based on color values */}
-                    <div 
-                      className="absolute w-4 h-4 rounded-full border-2 border-white" 
-                      style={{ 
-                        transform: 'translate(-50%, -50%)', 
-                        boxShadow: '0 0 0 1px rgba(0,0,0,0.3)',
-                        left: `${colorPickerSaturation}%`,
-                        top: `${100 - colorPickerLightness}%`
-                      }}
-                    ></div>
-                  </div>
-                  
-                  {/* Hue slider */}
-                  <div 
-                    ref={hueSliderRef}
-                    className="relative mb-5 h-5 cursor-pointer"
-                    onClick={handleHueSliderClick}
-                    onMouseDown={handleHueSliderMouseDown}
-                  >
-                    <div 
-                      className="absolute inset-0 rounded"
-                      style={{
-                        backgroundImage: 'linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)'
-                      }}
-                    ></div>
-                    {/* Hue selector */}
-                    <div 
-                      className="absolute w-4 h-full top-0 rounded-sm border border-white"
-                      style={{ 
-                        left: `${(colorPickerHue / 360) * 100}%`,
-                        transform: 'translateX(-50%)',
-                        boxShadow: '0 0 0 1px rgba(0,0,0,0.3)'
-                      }}
-                    ></div>
-                  </div>
-                  
-                  {/* Color preview & eyedropper */}
-                  <div className="flex items-center mb-4">
-                    <div 
-                      className="w-10 h-10 rounded-md mr-2 border border-gray-300" 
-                      style={{ backgroundColor: customColor }}
-                    ></div>
-                    <button 
-                      className="p-1 border border-gray-200 rounded"
-                      title="Pick a color from the screen"
-                      onClick={() => {
-                        setShowColorPicker(false);
-                        toggleEyedropper();
-                      }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M6.354 13.354a.5.5 0 01-.708 0l-3-3a.5.5 0 01.708-.708L6 12.293l6.646-6.647a.5.5 0 01.708 0l3 3a.5.5 0 010 .708l-7 7a.5.5 0 01-.708 0l-3-3z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                    
-                    {/* Hex input */}
-                    <input
-                      type="text"
-                      value={customColor}
-                      onChange={(e) => setCustomColor(e.target.value)}
-                      className="ml-auto w-24 px-2 py-1 border border-gray-300 rounded-md text-sm"
-                    />
-                  </div>
-                  
-                  {/* RGB inputs */}
-                  <div className="grid grid-cols-3 gap-2 mb-4">
-                    <div>
-                      <input 
-                        type="number" 
-                        min="0" 
-                        max="255"
-                        value={hexToRgb(customColor)?.r || 0}
-                        onChange={(e) => updateRgbValue('r', e.target.value)}
-                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm mb-1"
-                      />
-                      <label className="text-xs text-center block">R</label>
-                    </div>
-                    <div>
-                      <input 
-                        type="number" 
-                        min="0" 
-                        max="255"
-                        value={hexToRgb(customColor)?.g || 0}
-                        onChange={(e) => updateRgbValue('g', e.target.value)}
-                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm mb-1"
-                      />
-                      <label className="text-xs text-center block">G</label>
-                    </div>
-                    <div>
-                      <input 
-                        type="number" 
-                        min="0" 
-                        max="255"
-                        value={hexToRgb(customColor)?.b || 0}
-                        onChange={(e) => updateRgbValue('b', e.target.value)}
-                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm mb-1"
-                      />
-                      <label className="text-xs text-center block">B</label>
-                    </div>
-                  </div>
-                  
-                  {/* Presets */}
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Presets</label>
-                    <div className="grid grid-cols-8 gap-1">
-                      {["#000000", "#FFFFFF", "#FF0000", "#00FF00", "#0000FF", 
-                        "#FFFF00", "#FF00FF", "#00FFFF", "#FF9900", "#9900FF",
-                        "#009900", "#990000", "#999999", "#CCCCCC", "#663300", "#333333"].map((color, idx) => (
-                        <button
-                          key={idx}
-                          className="w-6 h-6 border border-gray-300 rounded-sm"
-                          style={{ backgroundColor: color }}
-                          onClick={() => setCustomColor(color)}
-                          title={color}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  
-                  {/* Add to palette button */}
-                  <div className="flex justify-end">
-                    <button
-                      onClick={addCustomColor}
-                      className="px-3 py-1 bg-blue-500 text-white rounded-md text-sm"
-                    >
-                      Add to Palette
-                    </button>
-                  </div>
-                </div>
-                
-                {/* Cancel button */}
-                <div 
-                  className="bg-gray-100 py-3 px-4 rounded-b-md text-center cursor-pointer"
-                  onClick={() => setShowColorPicker(false)}
-                >
-                  <span className="text-gray-600">Cancel</span>
-                </div>
-              </div>
-            )}
-          </div>
-          
-          {/* Color palette */}
+        <div className="md:col-span-4 lg:col-span-4">
+          {/* Color palette first for quicker access */}
           <div className="mb-4">
             <h4 className="font-medium mb-2">Color Palette</h4>
-            <div className="color-palette grid grid-cols-4 gap-2 max-h-40 overflow-y-auto p-1">
+            <div className="color-palette grid grid-cols-8 gap-0.5 max-h-40 overflow-y-auto p-1 border border-gray-200 rounded">
               {colors.map((color, index) => (
                 <button
                   key={index}
-                  className={`w-8 h-8 rounded-md border ${selectedColor === color ? 'border-blue-500 ring-2 ring-blue-300' : 'border-gray-300'}`}
+                  className={`w-6 h-6 rounded-sm ${selectedColor === color ? 'ring-1 ring-blue-500' : 'border border-gray-300'}`}
                   style={{ 
                     backgroundColor: color.rgba, 
                     backgroundImage: color.a < 255 
-                      ? 'repeating-conic-gradient(#f0f0f0 0% 25%, #ffffff 0% 50%) 50% / 8px 8px' 
+                      ? 'repeating-conic-gradient(#f0f0f0 0% 25%, #ffffff 0% 50%) 50% / 4px 4px' 
                       : 'none'
                   }}
                   onClick={() => setSelectedColor(color)}
@@ -757,25 +541,201 @@ const PixelEditor = ({
             </div>
           </div>
           
-          {/* Tools */}
-          <div className="mb-4">
-            <h4 className="font-medium mb-2">Tools</h4>
-            <div className="flex space-x-2">
-              <button
-                className="px-3 py-1 bg-gray-200 rounded-md disabled:opacity-50"
-                onClick={handleUndo}
-                disabled={currentStep <= 0}
+          {/* Color picker */}
+          <div className="mb-4 relative">
+            <h4 className="font-medium mb-2">Add Custom Color</h4>
+            <p className="text-xs text-gray-600 mb-2">
+              Select any color to begin painting immediately
+            </p>
+            
+            <div className="flex items-center space-x-2">
+              <button 
+                className={`w-8 h-8 flex items-center justify-center border rounded-md ${isEyedropper ? 'bg-blue-100 border-blue-500 border-2 shadow-sm' : 'border-gray-200 hover:bg-gray-100'}`}
+                title="Sample color from the canvas"
+                onClick={toggleEyedropper}
               >
-                Undo
+                <img src="/icons/eyedropper.svg" alt="Eyedropper" className="w-5 h-5" />
               </button>
+              <input
+                type="text"
+                value={customColor}
+                onChange={(e) => {
+                  setCustomColor(e.target.value);
+                  // The useEffect hook will handle setting this as the selected color
+                }}
+                className="w-24 px-2 py-1 border border-gray-300 rounded-md text-sm"
+                placeholder="#RRGGBB"
+              />
               <button
-                className="px-3 py-1 bg-gray-200 rounded-md disabled:opacity-50"
-                onClick={handleRedo}
-                disabled={currentStep >= history.length - 1}
+                onClick={() => setShowColorPicker(!showColorPicker)}
+                className={`w-8 h-8 border rounded-md ${selectedColor && selectedColor.hex === customColor ? 'border-blue-500 ring-1 ring-blue-300' : 'border-gray-300'}`}
+                style={{ backgroundColor: customColor }}
+                title="Click to open color picker - This color is ready for painting"
+              ></button>
+              <button
+                onClick={addCustomColor}
+                className="px-2 py-1 bg-blue-500 text-white rounded-md text-sm"
               >
-                Redo
+                Add
               </button>
             </div>
+            
+            {showColorPicker && (
+              <div 
+                ref={colorPickerRef}
+                className="absolute z-10 mt-1 bg-white rounded-md shadow-lg border border-gray-300 p-4 w-full"
+              >
+                {/* Main color selection area - using react-colorful */}
+                <HexColorPicker 
+                  color={customColor} 
+                  onChange={(color) => {
+                    setCustomColor(color);
+                    
+                    // Create a temporary color object to immediately update the preview
+                    const rgb = hexToRgb(color);
+                    if (rgb) {
+                      const tempColor = {
+                        r: rgb.r,
+                        g: rgb.g,
+                        b: rgb.b,
+                        a: 255,
+                        rgba: `rgba(${rgb.r},${rgb.g},${rgb.b},1)`,
+                        hex: color
+                      };
+                      setSelectedColor(tempColor);
+                    }
+                  }} 
+                  className="mb-3 w-full"
+                  style={{ width: '100%' }}
+                />
+                
+                {/* Color input and preview area */}
+                <div className="flex items-center mt-3 space-x-3">
+                  <div 
+                    className="w-10 h-10 rounded-md border border-gray-300" 
+                    style={{ backgroundColor: customColor }}
+                  ></div>
+                  <div className="flex-1 flex items-center">
+                    <input
+                      type="text"
+                      value={customColor}
+                      onChange={(e) => {
+                        setCustomColor(e.target.value);
+                        // The color will be updated when the input loses focus or when Enter is pressed
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          const rgb = hexToRgb(customColor);
+                          if (rgb) {
+                            const tempColor = {
+                              r: rgb.r,
+                              g: rgb.g,
+                              b: rgb.b,
+                              a: 255,
+                              rgba: `rgba(${rgb.r},${rgb.g},${rgb.b},1)`,
+                              hex: customColor
+                            };
+                            setSelectedColor(tempColor);
+                          }
+                        }
+                      }}
+                      className="flex-1 px-2 py-1 border border-gray-300 rounded-md text-sm"
+                      placeholder="#RRGGBB"
+                    />
+                    <button 
+                      className="w-8 h-8 ml-1 flex items-center justify-center border border-gray-200 rounded-md hover:bg-gray-100"
+                      title="Sample color from the canvas"
+                      onClick={() => {
+                        setShowColorPicker(false);
+                        toggleEyedropper();
+                      }}
+                    >
+                      <img src="/icons/eyedropper.svg" alt="Eyedropper" className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+                
+                {/* RGB inputs for fine-tuning */}
+                <div className="flex mt-3 space-x-2">
+                  <div className="flex flex-col items-center">
+                    <input
+                      type="number"
+                      min="0"
+                      max="255"
+                      value={selectedColor?.r || 0}
+                      onChange={(e) => {
+                        updateRgbValue('r', e.target.value);
+                      }}
+                      className="w-16 px-2 py-1 border border-gray-300 rounded-md text-sm"
+                    />
+                    <span className="text-xs mt-1">R</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <input
+                      type="number"
+                      min="0"
+                      max="255"
+                      value={selectedColor?.g || 0}
+                      onChange={(e) => {
+                        updateRgbValue('g', e.target.value);
+                      }}
+                      className="w-16 px-2 py-1 border border-gray-300 rounded-md text-sm"
+                    />
+                    <span className="text-xs mt-1">G</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <input
+                      type="number"
+                      min="0"
+                      max="255"
+                      value={selectedColor?.b || 0}
+                      onChange={(e) => {
+                        updateRgbValue('b', e.target.value);
+                      }}
+                      className="w-16 px-2 py-1 border border-gray-300 rounded-md text-sm"
+                    />
+                    <span className="text-xs mt-1">B</span>
+                  </div>
+                </div>
+                
+                {/* Presets */}
+                <div className="mt-4 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Presets</label>
+                  <div className="grid grid-cols-8 gap-1">
+                    {["#000000", "#FFFFFF", "#FF0000", "#00FF00", "#0000FF", 
+                      "#FFFF00", "#FF00FF", "#00FFFF", "#FF9900", "#9900FF",
+                      "#009900", "#990000", "#999999", "#CCCCCC", "#663300", "#333333"].map((color, idx) => (
+                      <button
+                        key={idx}
+                        className="w-6 h-6 border border-gray-300 rounded-sm hover:border-blue-500"
+                        style={{ backgroundColor: color }}
+                        onClick={() => {
+                          setCustomColor(color);
+                          // We don't need to manually update selectedColor since the useEffect will handle it
+                        }}
+                        title={color}
+                      />
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Action buttons */}
+                <div className="flex justify-between mt-4">
+                  <button
+                    onClick={() => setShowColorPicker(false)}
+                    className="px-3 py-1 bg-gray-200 text-gray-700 rounded-md text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={addCustomColor}
+                    className="px-3 py-1 bg-blue-500 text-white rounded-md text-sm"
+                  >
+                    Add to Palette
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
           
           {/* Action buttons */}

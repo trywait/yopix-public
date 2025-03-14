@@ -179,9 +179,11 @@ const UploadWidget = ({ onImageUpload }) => {
           onClick={() => setShowUnsplashSearch(true)}
           className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 flex items-center justify-center"
         >
-          <svg className="w-5 h-5 mr-2 text-gray-700" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512">
-            <path fill="currentColor" d="M448 230.17V480H0V32h298.084a16.07 16.07 0 0 1 11.315 4.688l134.101 134.101c7.5 7.5 4.484 20.281-6.064 24.826L384.04 230.17H448zm-43.968-44.585l-98.114-98.114c2.066 15.425 15.404 27.11 31.78 27.11h66.334z" />
-          </svg>
+          <img 
+            src="/icons/magnifying-glass.svg" 
+            alt="Search" 
+            className="w-5 h-5 mr-2 text-gray-700"
+          />
           Search Unsplash Photos
         </button>
       </div>
