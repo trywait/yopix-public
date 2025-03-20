@@ -25,6 +25,7 @@ export default function Home() {
   const [debug, setDebug] = useState([]);
   const [hasEditedPixels, setHasEditedPixels] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
 
   const addDebugMessage = (message) => {
     console.log(message);
@@ -46,9 +47,15 @@ export default function Home() {
     }
   }, []);
 
-  const handleImageUpload = (imageUrl) => {
+  const handleImageUpload = (imageUrl, prompt = '') => {
     try {
       console.log('[DEBUG] handleImageUpload called with image', imageUrl ? imageUrl.substring(0, 50) + '...' : 'null');
+      console.log('[DEBUG] Prompt received:', prompt, 'Length:', prompt.length);
+      
+      // Ensure prompt is properly trimmed and set
+      const cleanPrompt = prompt.trim();
+      console.log('[DEBUG] Clean prompt:', cleanPrompt, 'Length:', cleanPrompt.length);
+      
       setError(null);
       setSourceImage(imageUrl);
       setPreprocessedImage(null);
@@ -56,13 +63,16 @@ export default function Home() {
       setEditedImage(null);
       setIsPreprocessing(true);
       setIsProcessing(false);
+      setAiPrompt(cleanPrompt); // Use the cleaned prompt
+      
       console.log('[DEBUG] State after handleImageUpload:', { 
         sourceImage: 'Set',
         preprocessedImage: null,
         pixelatedImage: null,
         editedImage: null,
         isPreprocessing: true,
-        isProcessing: false
+        isProcessing: false,
+        aiPrompt: cleanPrompt
       });
     } catch (err) {
       console.error('Error handling image upload:', err);
@@ -75,6 +85,7 @@ export default function Home() {
   const handlePreprocessingComplete = (processedImage) => {
     try {
       console.log('Preprocessing complete, processed image:', processedImage ? processedImage.substring(0, 50) + '...' : 'null');
+      console.log('[DEBUG] Current aiPrompt:', aiPrompt); // Add debug log
       setPreprocessedImage(processedImage);
       setIsPreprocessing(false);
       setIsProcessing(true);
@@ -94,7 +105,8 @@ export default function Home() {
         preprocessedImage: 'Set',
         pixelatedImage: null,
         isPreprocessing: false,
-        isProcessing: true
+        isProcessing: true,
+        aiPrompt // Add to debug output
       });
     } catch (err) {
       console.error('Error completing preprocessing:', err);
@@ -110,6 +122,7 @@ export default function Home() {
         result.preview ? result.preview.substring(0, 100) + '...' : 'null',
         result.download ? result.download.substring(0, 100) + '...' : 'null'
       );
+      console.log('[DEBUG] Current aiPrompt:', aiPrompt); // Add debug log
       setPixelatedImage(result);
       setIsProcessing(false);
     } catch (err) {
@@ -129,6 +142,7 @@ export default function Home() {
       setIsPreprocessing(false);
       setIsProcessing(false);
       setError(null);
+      setAiPrompt(''); // Clear aiPrompt when resetting
       
       // Clear session storage
       sessionStorage.removeItem('yopix_crop_settings');
@@ -143,6 +157,7 @@ export default function Home() {
   };
 
   const handleBackToCropping = () => {
+    console.log('[DEBUG] Current aiPrompt before back to cropping:', aiPrompt); // Add debug log
     // If user has made edits, show confirmation modal first
     if (hasEditedPixels) {
       setShowConfirmModal(true);
@@ -154,6 +169,7 @@ export default function Home() {
   };
   
   const proceedToBackToCropping = () => {
+    console.log('[DEBUG] Current aiPrompt in proceedToBackToCropping:', aiPrompt); // Add debug log
     // First clear any errors
     setError(null);
     
@@ -601,9 +617,11 @@ export default function Home() {
                 </div>
                 
                 <div className="flex justify-end">
-                  <DownloadButton 
-                    imageUrl={editedImage || pixelatedImage} 
-                    filename={`yopix-pixel-art-${colorCount}colors${editedImage ? '-edited' : ''}.png`}
+                  {console.log('[DEBUG] Rendering DownloadButton with aiPrompt:', aiPrompt)}
+                  <DownloadButton
+                    imageUrl={editedImage || pixelatedImage.download}
+                    filename={`yopix-${aiPrompt ? aiPrompt.toLowerCase().replace(/[^a-z0-9]/g, '-') : 'pixel-art'}-${colorCount}colors${editedImage ? '-edited' : ''}.png`}
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2"
                   />
                 </div>
               </div>

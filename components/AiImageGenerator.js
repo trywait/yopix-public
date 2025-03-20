@@ -14,13 +14,19 @@ const AiImageGenerator = ({ onImageSelect, compact = false }) => {
     setError(null);
 
     try {
+      // Store the raw user input
+      const userText = prompt.trim();
+      
+      // Create the enhanced prompt for the API
+      const enhancedPrompt = `Create a colorful app icon of a ${userText}. The style should be extremely simple and bold like an iOS app icon or Material Design icon, with bright cheerful colors. The icon should be large and centered on a pure white background with no border. Use 3-4 solid colors maximum, no gradients or shadows. Make it playful and cute, similar to a modern app icon or emoji design. The shape should be very simple and fill most of the frame.`;
+
       const response = await fetch('/api/generate-ai-image', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          prompt: `Create a colorful app icon of a ${prompt.trim()}. The style should be extremely simple and bold like an iOS app icon or Material Design icon, with bright cheerful colors. The icon should be large and centered on a pure white background with no border. Use 3-4 solid colors maximum, no gradients or shadows. Make it playful and cute, similar to a modern app icon or emoji design. The shape should be very simple and fill most of the frame.`
+          prompt: enhancedPrompt
         }),
       });
 
@@ -57,7 +63,10 @@ const AiImageGenerator = ({ onImageSelect, compact = false }) => {
   };
 
   const handleImageSelect = (imageUrl) => {
-    onImageSelect(imageUrl);
+    // Pass just the raw user input text, not the enhanced prompt
+    const userText = prompt.trim();
+    console.log('AI Generator - Passing raw user text:', userText);
+    onImageSelect(imageUrl, userText);
     setGeneratedImages([]);
     setPrompt('');
   };

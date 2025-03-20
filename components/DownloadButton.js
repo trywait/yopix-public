@@ -10,6 +10,7 @@ const DownloadButton = ({ imageUrl, filename = 'pixel-art.png' }) => {
   const [error, setError] = useState(null);
 
   const handleDownload = () => {
+    console.log('[DEBUG] Download requested with filename:', filename);
     try {
       // Get the appropriate URL (either direct URL or download URL from object)
       const downloadUrl = typeof imageUrl === 'object' ? imageUrl.download : imageUrl;

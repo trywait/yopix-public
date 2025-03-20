@@ -201,9 +201,9 @@ const UploadWidget = ({ onImageUpload }) => {
           ) : (
             <div className="flex-1">
               <AiImageGenerator 
-                onImageSelect={(imageUrl) => {
+                onImageSelect={(imageUrl, prompt) => {
                   setShowAiInput(false);
-                  onImageUpload(imageUrl);
+                  onImageUpload(imageUrl, prompt);
                 }}
                 compact={true}
               />
