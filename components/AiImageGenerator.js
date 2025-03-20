@@ -98,25 +98,40 @@ const AiImageGenerator = ({ onImageSelect, compact = false }) => {
           <p className="mt-2 text-sm text-red-600">{error}</p>
         )}
         {generatedImages.length > 0 && (
-          <div className="mt-4 grid grid-cols-2 gap-4">
-            {generatedImages.map((imageUrl, index) => (
-              <button
-                key={index}
-                onClick={() => handleImageSelect(imageUrl)}
-                className="relative aspect-square overflow-hidden rounded-lg border-2 border-transparent hover:border-purple-500 focus:outline-none focus:border-purple-500 bg-gray-50"
-              >
-                <img
-                  src={imageUrl}
-                  alt={`Generated option ${index + 1}`}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    console.error('Image failed to load:', imageUrl);
-                    e.target.style.display = 'none';
-                  }}
-                />
-              </button>
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2 gap-4">
+              {generatedImages.map((imageUrl, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleImageSelect(imageUrl)}
+                  className="relative aspect-square overflow-hidden rounded-lg border-2 border-transparent hover:border-purple-500 focus:outline-none focus:border-purple-500 bg-gray-50 group"
+                >
+                  <img
+                    src={imageUrl}
+                    alt={`Generated option ${index + 1}`}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      console.error('Image failed to load:', imageUrl);
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-purple-500 bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
+                    <span className="text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-lg drop-shadow-md">
+                      Use
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center">
+                <span className="text-xl mr-2">👾</span>
+                <p className="text-sm text-blue-700">
+                  These are not the final images. Your selection will be converted into a much simpler, true 16x16 pixel art
+                </p>
+              </div>
+            </div>
+          </>
         )}
       </form>
     );
@@ -155,21 +170,40 @@ const AiImageGenerator = ({ onImageSelect, compact = false }) => {
         )}
 
         {generatedImages.length > 0 && (
-          <div className="grid grid-cols-2 gap-6">
-            {generatedImages.map((imageUrl, index) => (
-              <button
-                key={index}
-                onClick={() => handleImageSelect(imageUrl)}
-                className="relative aspect-square overflow-hidden rounded-lg border-2 border-transparent hover:border-purple-500 focus:outline-none focus:border-purple-500"
-              >
-                <img
-                  src={imageUrl}
-                  alt={`Generated option ${index + 1}`}
-                  className="w-full h-full object-cover"
-                />
-              </button>
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2 gap-4">
+              {generatedImages.map((imageUrl, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleImageSelect(imageUrl)}
+                  className="relative aspect-square overflow-hidden rounded-lg border-2 border-transparent hover:border-purple-500 focus:outline-none focus:border-purple-500 bg-gray-50 group"
+                >
+                  <img
+                    src={imageUrl}
+                    alt={`Generated option ${index + 1}`}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      console.error('Image failed to load:', imageUrl);
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-purple-500 bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
+                    <span className="text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-lg drop-shadow-md">
+                      Use
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center">
+                <span className="text-xl mr-2">👾</span>
+                <p className="text-sm text-blue-700">
+                  These are not the final images. Your selection will be converted into a much simpler, true 16x16 pixel art
+                </p>
+              </div>
+            </div>
+          </>
         )}
       </form>
     </div>
