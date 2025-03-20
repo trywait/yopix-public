@@ -19,7 +19,9 @@ const AiImageGenerator = ({ onImageSelect, compact = false }) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt: prompt.trim() }),
+        body: JSON.stringify({ 
+          prompt: `Create a colorful app icon of a ${prompt.trim()}. The style should be extremely simple and bold like an iOS app icon or Material Design icon, with bright cheerful colors. The icon should be large and centered on a pure white background with no border. Use 3-4 solid colors maximum, no gradients or shadows. Make it playful and cute, similar to a modern app icon or emoji design. The shape should be very simple and fill most of the frame.`
+        }),
       });
 
       if (!response.ok) {
@@ -42,7 +44,13 @@ const AiImageGenerator = ({ onImageSelect, compact = false }) => {
       setGeneratedImages(imageUrls);
     } catch (err) {
       console.error('Generation error:', err);
-      setError(err.message);
+      
+      // Check if it's a quota/rate limit error
+      if (err.message.includes('quota') || err.message.includes('429') || err.message.includes('Too Many Requests')) {
+        setError('Generation Limit Reached. Please use a different image upload method');
+      } else {
+        setError('Failed to generate image. Please try again.');
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -63,7 +71,7 @@ const AiImageGenerator = ({ onImageSelect, compact = false }) => {
               type="text"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Type to generate..."
+              placeholder="Dog, Beach, Pinwheel..."
               className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
               disabled={isGenerating}
             />
@@ -82,7 +90,9 @@ const AiImageGenerator = ({ onImageSelect, compact = false }) => {
               )}
             </button>
           </div>
-          <p className="text-sm text-gray-600">Keep it simple, and we'll handle the rest</p>
+          {generatedImages.length === 0 && (
+            <p className="text-xs text-gray-600 text-center italic">Keep it simple, and we'll handle the rest</p>
+          )}
         </div>
         {error && (
           <p className="mt-2 text-sm text-red-600">{error}</p>

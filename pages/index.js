@@ -388,7 +388,7 @@ export default function Home() {
 
         {!sourceImage && (
           <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-            <h2 className="text-2xl font-bold mb-4 text-gray-800">Upload an Image</h2>
+            <h2 className="text-2xl font-bold mb-4 text-gray-800">Choose an Image</h2>
             <UploadWidget onImageUpload={handleImageUpload} />
           </div>
         )}

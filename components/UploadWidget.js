@@ -195,10 +195,7 @@ const UploadWidget = ({ onImageUpload }) => {
               onClick={() => setShowAiInput(true)}
               className="w-full py-2 px-4 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300 flex items-center justify-center"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M13.5 3a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM15 3a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path d="M14 7a1 1 0 011 1v7a1 1 0 01-1 1H6a1 1 0 01-1-1V8a1 1 0 011-1h8zm-1 2H7v5h6V9z" />
-              </svg>
+              <span className="mr-2">✨</span>
               Generate with AI
             </button>
           ) : (
