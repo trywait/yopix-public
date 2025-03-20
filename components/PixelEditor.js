@@ -6,7 +6,8 @@ const PixelEditor = ({
   originalImageUrl, // The original cropped image
   colorCount, // The current color count used for pixelation
   onComplete, // Callback when editing is complete
-  onCancel // Callback to cancel and return to previous step
+  onCancel, // Callback to cancel and return to previous step
+  onEditStateChange // Callback to notify parent when edits are made
 }) => {
   const [editorCanvas, setEditorCanvas] = useState(null);
   const [colors, setColors] = useState([]); // Extracted color palette
@@ -18,6 +19,7 @@ const PixelEditor = ({
   const [isEyedropper, setIsEyedropper] = useState(false);
   const [isPainting, setIsPainting] = useState(false); // Track if user is currently painting
   const [lastPaintedPixel, setLastPaintedPixel] = useState({ x: -1, y: -1 }); // Track last painted pixel to avoid duplicates
+  const [hasEdits, setHasEdits] = useState(false); // Track if user has made any edits
   const canvasRef = useRef(null);
   const colorPickerRef = useRef(null);
 
@@ -38,6 +40,13 @@ const PixelEditor = ({
     
     img.src = imageSource;
   }, [pixelatedImageUrl]);
+
+  // Notify parent component when edit state changes
+  useEffect(() => {
+    if (onEditStateChange) {
+      onEditStateChange(hasEdits);
+    }
+  }, [hasEdits, onEditStateChange]);
 
   // Handle clicks outside the color picker
   useEffect(() => {
@@ -171,7 +180,11 @@ const PixelEditor = ({
     ctx.fillStyle = selectedColor.rgba;
     ctx.fillRect(x, y, 1, 1);
     
+    // Update last painted pixel
     setLastPaintedPixel({ x, y });
+    
+    // Mark that edits have been made
+    setHasEdits(true);
   };
 
   // Calculate pixel coordinates from mouse event
@@ -287,6 +300,11 @@ const PixelEditor = ({
     
     setHistory(newHistory);
     setCurrentStep(newHistory.length - 1);
+    
+    // Mark that edits have been made if this isn't the initial state
+    if (currentStep >= 0 || newHistory.length > 1) {
+      setHasEdits(true);
+    }
   };
 
   // Undo last action

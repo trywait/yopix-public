@@ -8,6 +8,7 @@ import DownloadButton from '../components/DownloadButton';
 import SimpleImagePreprocessor from '../components/ImagePreprocessor';
 import Loader from '../components/Loader';
 import PixelEditor from '../components/PixelEditor';
+import ConfirmationModal from '../components/ConfirmationModal';
 import { removeBackground } from '@imgly/background-removal';
 
 export default function Home() {
@@ -22,6 +23,8 @@ export default function Home() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [debug, setDebug] = useState([]);
+  const [hasEditedPixels, setHasEditedPixels] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const addDebugMessage = (message) => {
     console.log(message);
@@ -69,13 +72,24 @@ export default function Home() {
     }
   };
 
-  const handlePreprocessingComplete = (processedImageUrl) => {
+  const handlePreprocessingComplete = (processedImage) => {
     try {
-      console.log('[DEBUG] handlePreprocessingComplete called with URL', processedImageUrl ? processedImageUrl.substring(0, 50) + '...' : 'null');
-      setPreprocessedImage(processedImageUrl);
+      console.log('Preprocessing complete, processed image:', processedImage ? processedImage.substring(0, 50) + '...' : 'null');
+      setPreprocessedImage(processedImage);
       setIsPreprocessing(false);
       setIsProcessing(true);
-      console.log('[DEBUG] State after handlePreprocessingComplete:', { 
+      
+      // Clear any edited image when returning from cropping
+      if (editedImage) {
+        console.log('Clearing previous edited image');
+        setEditedImage(null);
+      }
+      
+      // Clear edit state flag
+      setHasEditedPixels(false);
+      
+      // Analytics
+      console.log('State change:', {
         sourceImage: 'Set',
         preprocessedImage: 'Set',
         pixelatedImage: null,
@@ -129,11 +143,26 @@ export default function Home() {
   };
 
   const handleBackToCropping = () => {
+    // If user has made edits, show confirmation modal first
+    if (hasEditedPixels) {
+      setShowConfirmModal(true);
+      return;
+    }
+    
+    // Otherwise proceed directly
+    proceedToBackToCropping();
+  };
+  
+  const proceedToBackToCropping = () => {
     // First clear any errors
     setError(null);
     
-    // Clear the pixelated image but keep the source image
+    // Clear the pixelated image and edited image
     setPixelatedImage(null);
+    setEditedImage(null);
+    
+    // Reset edit state flag
+    setHasEditedPixels(false);
     
     // Ensure we're not in processing state
     setIsProcessing(false);
@@ -141,7 +170,14 @@ export default function Home() {
     // Set preprocessing to true to show the ImagePreprocessor component
     setIsPreprocessing(true);
     
+    // Close the confirmation modal
+    setShowConfirmModal(false);
+    
     console.log("Navigating back to cropping stage...");
+  };
+  
+  const handleCancelBackToCropping = () => {
+    setShowConfirmModal(false);
   };
 
   const handleProcessingError = (errorMessage) => {
@@ -298,6 +334,10 @@ export default function Home() {
   const handleEditingCancel = () => {
     setIsEditing(false);
   };
+  
+  const handleEditStateChange = (hasEdits) => {
+    setHasEditedPixels(hasEdits);
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
@@ -308,7 +348,6 @@ export default function Home() {
         <style jsx global>{`
           .pixelated {
             image-rendering: pixelated;
-            image-rendering: -moz-crisp-edges;
             image-rendering: crisp-edges;
           }
         `}</style>
@@ -319,15 +358,23 @@ export default function Home() {
         strategy="beforeInteractive"
         onLoad={() => console.log('Pixel It library loaded via Next.js Script')}
       />
+      
+      <ConfirmationModal 
+        isOpen={showConfirmModal}
+        title="Discard Pixel Edits?"
+        message="You have made edits to your pixel art. If you go back to the cropping stage, these edits will be lost. Do you want to continue?"
+        onConfirm={proceedToBackToCropping}
+        onCancel={handleCancelBackToCropping}
+      />
 
-      <main className="flex-grow w-full container mx-auto px-4 py-8">
+      <main className="flex-grow container mx-auto p-4 md:p-6">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">YoPix</h1>
           <p className="text-xl text-gray-600">Transform your images into true 16x16 pixel art</p>
         </div>
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6" role="alert">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
             <strong className="font-bold">Error: </strong>
             <span className="block sm:inline">{error}</span>
             <button 
@@ -440,6 +487,7 @@ export default function Home() {
                 colorCount={colorCount}
                 onComplete={handleEditingComplete}
                 onCancel={handleEditingCancel}
+                onEditStateChange={handleEditStateChange}
               />
             ) : pixelatedImage || editedImage ? (
               <div>
