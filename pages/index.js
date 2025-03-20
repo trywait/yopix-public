@@ -25,6 +25,7 @@ export default function Home() {
   const [debug, setDebug] = useState([]);
   const [hasEditedPixels, setHasEditedPixels] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showNewImageModal, setShowNewImageModal] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
 
   const addDebugMessage = (message) => {
@@ -355,6 +356,26 @@ export default function Home() {
     setHasEditedPixels(hasEdits);
   };
 
+  // Handle new image button click
+  const handleNewImageClick = () => {
+    // If there's an image and edits, show confirmation
+    if (sourceImage || preprocessedImage || pixelatedImage || editedImage) {
+      setShowNewImageModal(true);
+      return;
+    }
+    // Otherwise proceed directly
+    proceedToNewImage();
+  };
+  
+  const proceedToNewImage = () => {
+    handleReset();
+    setShowNewImageModal(false);
+  };
+  
+  const handleCancelNewImage = () => {
+    setShowNewImageModal(false);
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       <Head>
@@ -381,6 +402,14 @@ export default function Home() {
         message="You have made edits to your pixel art. If you go back to the cropping stage, these edits will be lost. Do you want to continue?"
         onConfirm={proceedToBackToCropping}
         onCancel={handleCancelBackToCropping}
+      />
+
+      <ConfirmationModal 
+        isOpen={showNewImageModal}
+        title="Start New Image?"
+        message="Starting a new image will discard your current image and all progress. Do you want to continue?"
+        onConfirm={proceedToNewImage}
+        onCancel={handleCancelNewImage}
       />
 
       <main className="flex-grow container mx-auto p-4 md:p-6">
@@ -519,7 +548,7 @@ export default function Home() {
                       Return to Cropping
                     </button>
                     <button
-                      onClick={handleReset}
+                      onClick={handleNewImageClick}
                       className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 flex items-center"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
