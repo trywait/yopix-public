@@ -1,12 +1,14 @@
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import UnsplashSearch from './UnsplashSearch';
+import AiImageGenerator from './AiImageGenerator';
 
 const UploadWidget = ({ onImageUpload }) => {
   const [imageUrl, setImageUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showUnsplashSearch, setShowUnsplashSearch] = useState(false);
+  const [showAiGenerator, setShowAiGenerator] = useState(false);
   const [attributionInfo, setAttributionInfo] = useState(null);
 
   // Function to check if a file is an animated GIF
@@ -134,6 +136,23 @@ const UploadWidget = ({ onImageUpload }) => {
     );
   }
 
+  if (showAiGenerator) {
+    return (
+      <div className="w-full">
+        <button
+          onClick={() => setShowAiGenerator(false)}
+          className="mb-4 px-4 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 flex items-center"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
+          </svg>
+          Back to Upload Options
+        </button>
+        <AiImageGenerator onImageSelect={onImageUpload} />
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-md mx-auto">
       <div 
@@ -175,17 +194,30 @@ const UploadWidget = ({ onImageUpload }) => {
 
       <div className="mt-4">
         <p className="text-center text-gray-600 font-medium mb-2">OR</p>
-        <button
-          onClick={() => setShowUnsplashSearch(true)}
-          className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 flex items-center justify-center"
-        >
-          <img 
-            src="/icons/magnifying-glass.svg" 
-            alt="Search" 
-            className="w-5 h-5 mr-2 text-gray-700"
-          />
-          Search Unsplash Photos
-        </button>
+        <div className="space-y-2">
+          <button
+            onClick={() => setShowUnsplashSearch(true)}
+            className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 flex items-center justify-center"
+          >
+            <img 
+              src="/icons/magnifying-glass.svg" 
+              alt="Search" 
+              className="w-5 h-5 mr-2 text-gray-700"
+            />
+            Search Unsplash Photos
+          </button>
+
+          <button
+            onClick={() => setShowAiGenerator(true)}
+            className="w-full py-2 px-4 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300 flex items-center justify-center"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M13.5 3a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM15 3a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path d="M14 7a1 1 0 011 1v7a1 1 0 01-1 1H6a1 1 0 01-1-1V8a1 1 0 011-1h8zm-1 2H7v5h6V9z" />
+            </svg>
+            Generate with AI
+          </button>
+        </div>
       </div>
 
       {attributionInfo && (
