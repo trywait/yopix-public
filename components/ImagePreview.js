@@ -36,12 +36,22 @@ const ImagePreview = ({
   return (
     <div className="image-preview-container">
       <div className="relative border border-gray-300 rounded-lg overflow-hidden bg-gray-100 aspect-square">
+        {/* Checkerboard background for transparent areas */}
+        <div 
+          className="absolute inset-0" 
+          style={{
+            backgroundImage: 'linear-gradient(45deg, #e0e0e0 25%, transparent 25%), linear-gradient(-45deg, #e0e0e0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e0e0e0 75%), linear-gradient(-45deg, transparent 75%, #e0e0e0 75%)',
+            backgroundSize: '8px 8px',
+            backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
+            zIndex: 0
+          }}
+        />
         {effectiveImageUrl ? (
           <div className="flex justify-center items-center w-full h-full">
             <img 
               src={effectiveImageUrl}
               alt={forceOriginal ? "Original image" : "Pixelated image"}
-              className={`w-full h-full object-contain ${!forceOriginal ? 'pixelated' : ''}`}
+              className={`w-full h-full object-contain ${!forceOriginal ? 'pixelated' : ''} relative z-10`}
               style={{
                 imageRendering: !forceOriginal ? 'pixelated' : 'auto'
               }}
