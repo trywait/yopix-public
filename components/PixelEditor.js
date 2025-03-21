@@ -525,36 +525,79 @@ const PixelEditor = ({
     setHasEdits(true);
   };
 
-  // Modify the handleComplete function to ensure we're using the most recent state
+  // Modify the handleComplete function to work from any tab
   const handleComplete = () => {
-    if (!canvasRef.current || !canvasContextRef.current) return;
-    
-    // Get the current canvas state
-    const currentState = canvasContextRef.current.getImageData(0, 0, canvasRef.current.width, canvasRef.current.height);
-    
-    // Create a scaled-up version for preview
-    const previewCanvas = document.createElement('canvas');
-    const scale = 16;
-    previewCanvas.width = canvasRef.current.width * scale;
-    previewCanvas.height = canvasRef.current.height * scale;
-    
-    const previewCtx = previewCanvas.getContext('2d');
-    previewCtx.imageSmoothingEnabled = false;
-    
-    // Draw the current state to the preview canvas
-    canvasContextRef.current.putImageData(currentState, 0, 0);
-    previewCtx.drawImage(
-      canvasRef.current, 
-      0, 0, canvasRef.current.width, canvasRef.current.height,
-      0, 0, previewCanvas.width, previewCanvas.height
-    );
-    
-    const result = {
-      preview: previewCanvas.toDataURL('image/png'),
-      download: canvasRef.current.toDataURL('image/png')
-    };
-    
-    onComplete(result);
+    // Create a temporary canvas to handle the save operation
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = 16;
+    tempCanvas.height = 16;
+    const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true, alpha: true });
+    tempCtx.imageSmoothingEnabled = false;
+
+    // Get the most recent state, either from canvasImageData or history
+    const currentState = canvasImageData || 
+      (historyRef.current.length > 0 ? historyRef.current[currentStep] : null);
+
+    if (currentState) {
+      // Apply the current state to the temporary canvas
+      tempCtx.putImageData(currentState, 0, 0);
+      
+      // Create a scaled-up version for preview
+      const previewCanvas = document.createElement('canvas');
+      const scale = 16;
+      previewCanvas.width = tempCanvas.width * scale;
+      previewCanvas.height = tempCanvas.height * scale;
+      
+      const previewCtx = previewCanvas.getContext('2d');
+      previewCtx.imageSmoothingEnabled = false;
+      
+      // Draw the current state to the preview canvas
+      previewCtx.drawImage(
+        tempCanvas, 
+        0, 0, tempCanvas.width, tempCanvas.height,
+        0, 0, previewCanvas.width, previewCanvas.height
+      );
+      
+      const result = {
+        preview: previewCanvas.toDataURL('image/png'),
+        download: tempCanvas.toDataURL('image/png')
+      };
+      
+      onComplete(result);
+    } else {
+      // If no state is available, use the original pixelated image
+      const img = new Image();
+      img.onload = () => {
+        tempCtx.drawImage(img, 0, 0, 16, 16);
+        
+        // Create preview version
+        const previewCanvas = document.createElement('canvas');
+        const scale = 16;
+        previewCanvas.width = tempCanvas.width * scale;
+        previewCanvas.height = tempCanvas.height * scale;
+        
+        const previewCtx = previewCanvas.getContext('2d');
+        previewCtx.imageSmoothingEnabled = false;
+        
+        previewCtx.drawImage(
+          tempCanvas,
+          0, 0, tempCanvas.width, tempCanvas.height,
+          0, 0, previewCanvas.width, previewCanvas.height
+        );
+        
+        const result = {
+          preview: previewCanvas.toDataURL('image/png'),
+          download: tempCanvas.toDataURL('image/png')
+        };
+        
+        onComplete(result);
+      };
+      
+      const imageSource = typeof pixelatedImageUrl === 'object' ? 
+        pixelatedImageUrl.preview : pixelatedImageUrl;
+      
+      img.src = imageSource;
+    }
   };
 
   // Toggle eraser mode
