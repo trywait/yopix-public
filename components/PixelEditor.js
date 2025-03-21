@@ -32,6 +32,7 @@ const PixelEditor = ({
   const [activeTab, setActiveTab] = useState('editor');
   const [lastCanvasState, setLastCanvasState] = useState(null);
   const [canvasImageData, setCanvasImageData] = useState(null);
+  const [previousTool, setPreviousTool] = useState('brush');
 
   // Add keyboard shortcut support for undo/redo
   useEffect(() => {
@@ -444,7 +445,22 @@ const PixelEditor = ({
       
       setSelectedColor(pickedColor);
       setCustomColor(pickedColor.hex);
+      
+      // Restore previous tool
       setIsEyedropper(false);
+      switch (previousTool) {
+        case 'brush':
+          setIsBrush(true);
+          break;
+        case 'paintBucket':
+          setIsPaintBucket(true);
+          break;
+        case 'eraser':
+          setIsEraser(true);
+          break;
+        default:
+          setIsBrush(true);
+      }
       return;
     }
     
@@ -492,30 +508,13 @@ const PixelEditor = ({
     setLastPaintedPixel({ x: -1, y: -1 });
     
     const newStep = currentStepRef.current - 1;
+    const newState = historyRef.current[newStep];
     
     // Update canvas immediately
-    canvasContextRef.current.putImageData(historyRef.current[newStep], 0, 0);
+    canvasContextRef.current.putImageData(newState, 0, 0);
     
-    // Update step ref synchronously
-    currentStepRef.current = newStep;
-    
-    // Update React state last
-    setCurrentStep(newStep);
-    if (newStep > 0) {
-      setHasEdits(true);
-    }
-  };
-
-  // Redo last undone action
-  const handleRedo = () => {
-    if (!canvasContextRef.current || !historyRef.current.length || !isInitializedRef.current) return;
-    
-    if (currentStepRef.current >= historyRef.current.length - 1) return;
-    
-    const newStep = currentStepRef.current + 1;
-    
-    // Update canvas immediately
-    canvasContextRef.current.putImageData(historyRef.current[newStep], 0, 0);
+    // Update canvasImageData to ensure we save the correct state
+    setCanvasImageData(newState);
     
     // Update step ref synchronously
     currentStepRef.current = newStep;
@@ -525,7 +524,30 @@ const PixelEditor = ({
     setHasEdits(true);
   };
 
-  // Modify the handleComplete function to work from any tab
+  // Redo last undone action
+  const handleRedo = () => {
+    if (!canvasContextRef.current || !historyRef.current.length || !isInitializedRef.current) return;
+    
+    if (currentStepRef.current >= historyRef.current.length - 1) return;
+    
+    const newStep = currentStepRef.current + 1;
+    const newState = historyRef.current[newStep];
+    
+    // Update canvas immediately
+    canvasContextRef.current.putImageData(newState, 0, 0);
+    
+    // Update canvasImageData to ensure we save the correct state
+    setCanvasImageData(newState);
+    
+    // Update step ref synchronously
+    currentStepRef.current = newStep;
+    
+    // Update React state last
+    setCurrentStep(newStep);
+    setHasEdits(true);
+  };
+
+  // Modify the handleComplete function to ensure we're using the current canvas state
   const handleComplete = () => {
     // Create a temporary canvas to handle the save operation
     const tempCanvas = document.createElement('canvas');
@@ -534,9 +556,15 @@ const PixelEditor = ({
     const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true, alpha: true });
     tempCtx.imageSmoothingEnabled = false;
 
-    // Get the most recent state, either from canvasImageData or history
-    const currentState = canvasImageData || 
-      (historyRef.current.length > 0 ? historyRef.current[currentStep] : null);
+    // Get the current state directly from the canvas if we're in editor mode
+    let currentState;
+    if (activeTab === 'editor' && canvasRef.current && canvasContextRef.current) {
+      currentState = canvasContextRef.current.getImageData(0, 0, canvasRef.current.width, canvasRef.current.height);
+    } else {
+      // Otherwise use the stored state
+      currentState = canvasImageData || 
+        (historyRef.current.length > 0 ? historyRef.current[currentStep] : null);
+    }
 
     if (currentState) {
       // Apply the current state to the temporary canvas
@@ -602,26 +630,39 @@ const PixelEditor = ({
 
   // Toggle eraser mode
   const toggleEraser = () => {
-    setIsEraser(!isEraser);
-    setIsEyedropper(false);
-    setIsPaintBucket(false);
-    setIsBrush(false);
+    if (!isEraser) {
+      setPreviousTool('eraser');
+      setIsEraser(true);
+      setIsEyedropper(false);
+      setIsPaintBucket(false);
+      setIsBrush(false);
+    }
   };
 
   // Toggle eyedropper mode
   const toggleEyedropper = () => {
-    setIsEyedropper(!isEyedropper);
-    setIsPaintBucket(false);
-    setIsBrush(false);
-    setIsEraser(false);
+    if (!isEyedropper) {
+      // Store current tool before switching to eyedropper
+      if (isBrush) setPreviousTool('brush');
+      if (isPaintBucket) setPreviousTool('paintBucket');
+      if (isEraser) setPreviousTool('eraser');
+      
+      setIsEyedropper(true);
+      setIsPaintBucket(false);
+      setIsBrush(false);
+      setIsEraser(false);
+    }
   };
 
   // Toggle paint bucket mode
   const togglePaintBucket = () => {
-    setIsPaintBucket(!isPaintBucket);
-    setIsEyedropper(false);
-    setIsBrush(false);
-    setIsEraser(false);
+    if (!isPaintBucket) {
+      setPreviousTool('paintBucket');
+      setIsPaintBucket(true);
+      setIsEyedropper(false);
+      setIsBrush(false);
+      setIsEraser(false);
+    }
     // Reset cursor when toggling paint bucket
     if (canvasRef.current) {
       canvasRef.current.style.cursor = !isPaintBucket ? 'crosshair' : 'pointer';
@@ -630,10 +671,13 @@ const PixelEditor = ({
 
   // Toggle brush mode
   const toggleBrush = () => {
-    setIsBrush(!isBrush);
-    setIsEyedropper(false);
-    setIsPaintBucket(false);
-    setIsEraser(false);
+    if (!isBrush) {
+      setPreviousTool('brush');
+      setIsBrush(true);
+      setIsEyedropper(false);
+      setIsPaintBucket(false);
+      setIsEraser(false);
+    }
   };
 
   // Update RGB values and convert back to hex
@@ -1285,11 +1329,6 @@ const PixelEditor = ({
                 
                 setSelectedColor(tempColor);
                 setCustomColor(hex);
-                
-                setIsBrush(true);
-                setIsEyedropper(false);
-                setIsPaintBucket(false);
-                setIsEraser(false);
               }
             }}
           />
