@@ -73,15 +73,10 @@ textarea {
 }
 
 /* Pixel art specific styles */
-.pixelated {
+.pixel-canvas {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   -ms-interpolation-mode: nearest-neighbor;
-  display: block;
-  max-width: 100%;
-  margin: 0 auto;
-  min-height: 80px; /* Ensure canvas has a minimum height */
-  min-width: 80px; /* Ensure canvas has a minimum width */
 }
 
 /* Container styles for better display */

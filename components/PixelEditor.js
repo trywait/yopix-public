@@ -29,6 +29,9 @@ const PixelEditor = ({
   const historyRef = useRef([]);
   const canvasContextRef = useRef(null);
   const isInitializedRef = useRef(false);
+  const [activeTab, setActiveTab] = useState('editor');
+  const [lastCanvasState, setLastCanvasState] = useState(null);
+  const [canvasImageData, setCanvasImageData] = useState(null);
 
   // Add keyboard shortcut support for undo/redo
   useEffect(() => {
@@ -72,6 +75,30 @@ const PixelEditor = ({
     img.src = imageSource;
   }, [pixelatedImageUrl]);
 
+  // Add effect to reinitialize canvas when switching back to editor
+  useEffect(() => {
+    if (activeTab === 'editor' && canvasRef.current && pixelatedImageUrl) {
+      const img = new Image();
+      img.onload = () => {
+        const ctx = canvasRef.current.getContext('2d', { willReadFrequently: true, alpha: true });
+        
+        // If we have history, use the current state
+        if (historyRef.current.length > 0 && currentStep >= 0) {
+          ctx.putImageData(historyRef.current[currentStep], 0, 0);
+        } else {
+          // Otherwise reinitialize from the image
+          ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+          ctx.drawImage(img, 0, 0, 16, 16);
+        }
+      };
+      
+      const imageSource = typeof pixelatedImageUrl === 'object' ? 
+        pixelatedImageUrl.preview : pixelatedImageUrl;
+      
+      img.src = imageSource;
+    }
+  }, [activeTab, pixelatedImageUrl, currentStep]);
+
   // Notify parent component when edit state changes
   useEffect(() => {
     if (onEditStateChange) {
@@ -95,7 +122,29 @@ const PixelEditor = ({
     };
   }, [showColorPicker]);
 
-  // Set up the editor canvas
+  // Add this function to handle canvas scaling
+  const setupCanvasScaling = (canvas, ctx) => {
+    // Set the canvas size to match container while maintaining aspect ratio
+    const container = canvas.parentElement;
+    const containerSize = Math.min(container.clientWidth, container.clientHeight);
+    
+    // Set display size
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    
+    // Set actual pixel size to 16x16
+    canvas.width = 16;
+    canvas.height = 16;
+    
+    // Disable image smoothing for crisp pixels
+    ctx.imageSmoothingEnabled = false;
+    ctx.webkitImageSmoothingEnabled = false;
+    ctx.mozImageSmoothingEnabled = false;
+    ctx.msImageSmoothingEnabled = false;
+    ctx.oImageSmoothingEnabled = false;
+  };
+
+  // Modify the setupCanvas function to properly initialize history
   const setupCanvas = (img) => {
     if (!canvasRef.current) return;
     
@@ -103,9 +152,8 @@ const PixelEditor = ({
     const ctx = canvas.getContext('2d', { willReadFrequently: true, alpha: true });
     canvasContextRef.current = ctx;
     
-    // Set canvas dimensions to match the 16x16 original pixelated image
-    canvas.width = 16;
-    canvas.height = 16;
+    // Set up canvas scaling
+    setupCanvasScaling(canvas, ctx);
     
     // Clear canvas with transparency
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -119,11 +167,14 @@ const PixelEditor = ({
     setSelectedColor(colors[0]);
     setCustomColor(colors[0].hex);
     
-    // Initialize history
+    // Initialize history with the current state
     const initialState = ctx.getImageData(0, 0, canvas.width, canvas.height);
     historyRef.current = [initialState];
     currentStepRef.current = 0;
     setCurrentStep(0);
+    
+    // Store the initial state for tab switching
+    setCanvasImageData(initialState);
     
     setEditorCanvas(canvas);
     isInitializedRef.current = true;
@@ -284,18 +335,19 @@ const PixelEditor = ({
 
   // Ensure clean state before capturing history
   const captureHistory = () => {
+    if (!canvasRef.current || !canvasContextRef.current) return;
+    
     // Reset painting state first
     setIsPainting(false);
     setLastPaintedPixel({ x: -1, y: -1 });
     
-    // Force multiple synchronous updates to ensure canvas is ready
-    canvasContextRef.current.getImageData(0, 0, 1, 1);
-    canvasContextRef.current.getImageData(0, 0, 1, 1);
-    
     // Capture the current state
     const newState = canvasContextRef.current.getImageData(0, 0, canvasRef.current.width, canvasRef.current.height);
     
-    // Update history synchronously
+    // Update canvasImageData to track the latest state
+    setCanvasImageData(newState);
+    
+    // Remove any future states if we're not at the end of history
     const newHistory = historyRef.current.slice(0, currentStepRef.current + 1);
     newHistory.push(newState);
     historyRef.current = newHistory;
@@ -473,27 +525,33 @@ const PixelEditor = ({
     setHasEdits(true);
   };
 
-  // Complete editing and return result
+  // Modify the handleComplete function to ensure we're using the most recent state
   const handleComplete = () => {
-    if (!editorCanvas) return;
+    if (!canvasRef.current || !canvasContextRef.current) return;
+    
+    // Get the current canvas state
+    const currentState = canvasContextRef.current.getImageData(0, 0, canvasRef.current.width, canvasRef.current.height);
     
     // Create a scaled-up version for preview
     const previewCanvas = document.createElement('canvas');
     const scale = 16;
-    previewCanvas.width = editorCanvas.width * scale;
-    previewCanvas.height = editorCanvas.height * scale;
+    previewCanvas.width = canvasRef.current.width * scale;
+    previewCanvas.height = canvasRef.current.height * scale;
     
     const previewCtx = previewCanvas.getContext('2d');
     previewCtx.imageSmoothingEnabled = false;
+    
+    // Draw the current state to the preview canvas
+    canvasContextRef.current.putImageData(currentState, 0, 0);
     previewCtx.drawImage(
-      editorCanvas, 
-      0, 0, editorCanvas.width, editorCanvas.height,
+      canvasRef.current, 
+      0, 0, canvasRef.current.width, canvasRef.current.height,
       0, 0, previewCanvas.width, previewCanvas.height
     );
     
     const result = {
       preview: previewCanvas.toDataURL('image/png'),
-      download: editorCanvas.toDataURL('image/png')
+      download: canvasRef.current.toDataURL('image/png')
     };
     
     onComplete(result);
@@ -661,249 +719,490 @@ const PixelEditor = ({
     }
   }, [isEyedropper, selectedColor, isEraser]);
 
+  // Modify the handleTabSwitch function to properly handle state
+  const handleTabSwitch = (tab) => {
+    if (tab === 'original' && canvasRef.current && canvasContextRef.current) {
+      // Store the current canvas state before switching away
+      try {
+        const imageData = canvasContextRef.current.getImageData(0, 0, canvasRef.current.width, canvasRef.current.height);
+        setCanvasImageData(imageData);
+        
+        // Also update history if needed
+        if (historyRef.current.length === 0 || 
+            !areImageDatasEqual(imageData, historyRef.current[currentStep])) {
+          historyRef.current.push(imageData);
+          currentStepRef.current = historyRef.current.length - 1;
+          setCurrentStep(currentStepRef.current);
+        }
+      } catch (error) {
+        console.error("Error storing canvas state:", error);
+      }
+    }
+
+    if (tab === 'editor' && pixelatedImageUrl) {
+      const img = new Image();
+      img.onload = () => {
+        if (!canvasRef.current) return;
+        
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true, alpha: true });
+        canvasContextRef.current = ctx;
+        
+        // Set canvas dimensions and disable smoothing
+        canvas.width = 16;
+        canvas.height = 16;
+        ctx.imageSmoothingEnabled = false;
+        
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Restore canvas state with proper history management
+        if (canvasImageData) {
+          try {
+            ctx.putImageData(canvasImageData, 0, 0);
+            
+            // Ensure history is properly initialized
+            if (historyRef.current.length === 0) {
+              historyRef.current = [canvasImageData];
+              currentStepRef.current = 0;
+              setCurrentStep(0);
+            }
+            // Update history if this state isn't already the latest
+            else if (!areImageDatasEqual(canvasImageData, historyRef.current[currentStep])) {
+              // Remove any future states if we're not at the end of history
+              historyRef.current = historyRef.current.slice(0, currentStep + 1);
+              historyRef.current.push(canvasImageData);
+              currentStepRef.current = historyRef.current.length - 1;
+              setCurrentStep(currentStepRef.current);
+            }
+          } catch (error) {
+            console.error("Error restoring canvas state:", error);
+            fallbackToHistory(ctx, img);
+          }
+        } else {
+          fallbackToHistory(ctx, img);
+        }
+
+        // Restore cursor state
+        requestAnimationFrame(() => {
+          updateCursor(canvas);
+        });
+      };
+      
+      const imageSource = typeof pixelatedImageUrl === 'object' ? 
+        pixelatedImageUrl.preview : pixelatedImageUrl;
+      
+      img.src = imageSource;
+    }
+    setActiveTab(tab);
+  };
+
+  // Helper function to compare ImageData objects
+  const areImageDatasEqual = (imageData1, imageData2) => {
+    if (!imageData1 || !imageData2) return false;
+    if (imageData1.width !== imageData2.width || 
+        imageData1.height !== imageData2.height) return false;
+    
+    const data1 = imageData1.data;
+    const data2 = imageData2.data;
+    
+    for (let i = 0; i < data1.length; i++) {
+      if (data1[i] !== data2[i]) return false;
+    }
+    return true;
+  };
+
+  // Helper function to fallback to history or original image
+  const fallbackToHistory = (ctx, img) => {
+    try {
+      if (historyRef.current.length > 0 && currentStep >= 0) {
+        ctx.putImageData(historyRef.current[currentStep], 0, 0);
+      } else {
+        // Draw from the original image
+        ctx.drawImage(img, 0, 0, 16, 16);
+        
+        // Initialize history with the original state
+        const initialState = ctx.getImageData(0, 0, 16, 16);
+        historyRef.current = [initialState];
+        currentStepRef.current = 0;
+        setCurrentStep(0);
+      }
+    } catch (error) {
+      console.error("Error in fallback:", error);
+      // Last resort: draw the original image
+      ctx.drawImage(img, 0, 0, 16, 16);
+    }
+  };
+
+  // Helper function to update cursor
+  const updateCursor = (canvas) => {
+    if (isEyedropper) {
+      canvas.classList.add('eyedropper-mode');
+      canvas.style.cursor = `url('/icons/eyedropper-cursor.svg') 1 20, crosshair`;
+    } else if (isEraser) {
+      const cursorCanvas = document.createElement('canvas');
+      cursorCanvas.width = 32;
+      cursorCanvas.height = 32;
+      const cursorCtx = cursorCanvas.getContext('2d');
+      
+      // Draw X with black outline
+      cursorCtx.strokeStyle = 'black';
+      cursorCtx.lineWidth = 2;
+      cursorCtx.beginPath();
+      cursorCtx.moveTo(8, 8);
+      cursorCtx.lineTo(24, 24);
+      cursorCtx.moveTo(24, 8);
+      cursorCtx.lineTo(8, 24);
+      cursorCtx.stroke();
+      
+      // Draw circle around X
+      cursorCtx.strokeStyle = 'white';
+      cursorCtx.lineWidth = 1;
+      cursorCtx.beginPath();
+      cursorCtx.arc(16, 16, 12, 0, Math.PI * 2);
+      cursorCtx.stroke();
+      
+      const dataURL = cursorCanvas.toDataURL('image/png');
+      canvas.style.cursor = `url(${dataURL}) 16 16, not-allowed`;
+    } else if (selectedColor) {
+      const cursorCanvas = document.createElement('canvas');
+      cursorCanvas.width = 32;
+      cursorCanvas.height = 32;
+      const cursorCtx = cursorCanvas.getContext('2d');
+      
+      // Draw color square
+      cursorCtx.fillStyle = selectedColor.rgba;
+      cursorCtx.fillRect(0, 0, 32, 32);
+      
+      // Draw strong black border for visibility
+      cursorCtx.strokeStyle = 'black';
+      cursorCtx.lineWidth = 2;
+      cursorCtx.strokeRect(1, 1, 30, 30);
+      
+      // Draw white inner border for contrast
+      cursorCtx.strokeStyle = 'white';
+      cursorCtx.lineWidth = 1;
+      cursorCtx.strokeRect(3, 3, 26, 26);
+      
+      const dataURL = cursorCanvas.toDataURL('image/png');
+      canvas.style.cursor = `url(${dataURL}) 16 16, crosshair`;
+    } else {
+      canvas.style.cursor = 'crosshair';
+    }
+  };
+
+  // Add resize observer to handle container size changes
+  useEffect(() => {
+    if (!canvasRef.current || !canvasContextRef.current) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (activeTab === 'editor') {
+        setupCanvasScaling(canvasRef.current, canvasContextRef.current);
+        if (historyRef.current[currentStep]) {
+          canvasContextRef.current.putImageData(historyRef.current[currentStep], 0, 0);
+        }
+      }
+    });
+
+    resizeObserver.observe(canvasRef.current.parentElement);
+
+    return () => resizeObserver.disconnect();
+  }, [activeTab, currentStep]);
+
+  // Add effect to handle canvas restoration
+  useEffect(() => {
+    if (activeTab === 'editor' && canvasContextRef.current && lastCanvasState) {
+      requestAnimationFrame(() => {
+        canvasContextRef.current.putImageData(lastCanvasState, 0, 0);
+      });
+    }
+  }, [activeTab, lastCanvasState]);
+
   return (
-    <div className="pixel-editor">
+    <div className="pixel-editor max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="mb-4">
         <h3 className="text-lg font-semibold text-gray-900">Pixel Editor</h3>
         <p className="text-sm text-gray-600">Edit your pixel art by clicking or dragging on pixels</p>
       </div>
       
-      <div className="editor-container grid grid-cols-1 md:grid-cols-12 gap-4">
-        {/* Original image - hidden on small screens */}
-        <div className="hidden md:block md:col-span-3">
-          <h4 className="font-medium mb-2 text-center text-gray-900">Original Image</h4>
-          <div className="border border-gray-300 rounded-lg overflow-hidden bg-white relative aspect-square max-w-md mx-auto shadow-sm">
-            <div className="checkerboard-bg" style={{
-              backgroundImage: 'repeating-conic-gradient(#f0f0f0 0% 25%, #ffffff 0% 50%) 50% / 16px 16px',
-              width: '100%',
-              height: '100%',
-              position: 'absolute'
-            }}></div>
-            {originalImageUrl && (
-              <img 
-                src={originalImageUrl} 
-                alt="Original cropped image" 
-                className="w-full h-full object-contain relative z-10"
-              />
+      <div className="editor-container grid grid-cols-1 lg:grid-cols-4 gap-4">
+        {/* Main Canvas Area */}
+        <div className="lg:col-span-3">
+          {/* Tab Navigation */}
+          <div className="flex border-b border-gray-200 mb-3">
+            <button
+              onClick={() => handleTabSwitch('editor')}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg -mb-px ${
+                activeTab === 'editor'
+                  ? 'text-blue-600 border-x border-t border-b-white border-gray-200 bg-white'
+                  : 'text-gray-500 hover:text-gray-700 border-b border-gray-200'
+              }`}
+            >
+              Editor Canvas
+            </button>
+            <button
+              onClick={() => handleTabSwitch('original')}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg -mb-px ${
+                activeTab === 'original'
+                  ? 'text-blue-600 border-x border-t border-b-white border-gray-200 bg-white'
+                  : 'text-gray-500 hover:text-gray-700 border-b border-gray-200'
+              }`}
+            >
+              Original Image
+            </button>
+          </div>
+
+          {/* Canvas Display Area */}
+          <div className="relative">
+            {/* Background Controls - Only show for editor tab */}
+            {activeTab === 'editor' && (
+              <div className="mb-3">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium text-gray-900 text-sm">Canvas Background</h4>
+                  <div className="inline-flex space-x-1 bg-gray-50 rounded-lg p-1">
+                    <button
+                      onClick={() => setBackgroundPreview('checkerboard')}
+                      className={`px-2 py-1 rounded text-xs transition-colors ${
+                        backgroundPreview === 'checkerboard' 
+                          ? 'bg-blue-500 text-white' 
+                          : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      Transparent
+                    </button>
+                    <button
+                      onClick={() => setBackgroundPreview('white')}
+                      className={`px-2 py-1 rounded text-xs transition-colors ${
+                        backgroundPreview === 'white' 
+                          ? 'bg-blue-500 text-white' 
+                          : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      White
+                    </button>
+                    <button
+                      onClick={() => setBackgroundPreview('black')}
+                      className={`px-2 py-1 rounded text-xs transition-colors ${
+                        backgroundPreview === 'black' 
+                          ? 'bg-blue-500 text-white' 
+                          : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      Black
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Canvas/Image Container */}
+            <div className="border border-gray-300 rounded-lg overflow-hidden relative aspect-square">
+              {activeTab === 'editor' ? (
+                <>
+                  {/* Background layer */}
+                  <div 
+                    className="absolute inset-0" 
+                    style={{
+                      backgroundColor: backgroundPreview === 'white' ? 'white' : 
+                                     backgroundPreview === 'black' ? 'black' : 'transparent',
+                      backgroundImage: backgroundPreview === 'checkerboard' 
+                        ? 'linear-gradient(45deg, #e0e0e0 25%, transparent 25%), linear-gradient(-45deg, #e0e0e0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e0e0e0 75%), linear-gradient(-45deg, transparent 75%, #e0e0e0 75%)'
+                        : 'none',
+                      backgroundSize: backgroundPreview === 'checkerboard' ? '8px 8px' : undefined,
+                      backgroundPosition: backgroundPreview === 'checkerboard' ? '0 0, 0 4px, 4px -4px, -4px 0px' : undefined,
+                      zIndex: 0
+                    }}
+                  />
+                  <canvas
+                    ref={canvasRef}
+                    onClick={handleCanvasClick}
+                    onMouseDown={handleCanvasMouseDown}
+                    onMouseMove={handleCanvasMouseMove}
+                    onMouseUp={handleCanvasMouseUp}
+                    onMouseLeave={handleCanvasMouseLeave}
+                    className="pixel-canvas absolute inset-0"
+                    style={{
+                      imageRendering: 'pixelated',
+                      width: '100%',
+                      height: '100%',
+                      aspectRatio: '1',
+                      background: 'none'
+                    }}
+                  />
+                </>
+              ) : (
+                <div className="relative w-full h-full">
+                  <div className="checkerboard-bg absolute inset-0" style={{
+                    backgroundImage: 'repeating-conic-gradient(#f0f0f0 0% 25%, #ffffff 0% 50%) 50% / 16px 16px'
+                  }}></div>
+                  {originalImageUrl && (
+                    <img 
+                      src={originalImageUrl} 
+                      alt="Original cropped image" 
+                      className="relative z-10 w-full h-full object-contain"
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Undo/Redo controls - Only show for editor tab */}
+            {activeTab === 'editor' && (
+              <div className="mt-3 flex justify-center space-x-3">
+                <button
+                  className="px-3 py-1 bg-gray-200 text-gray-900 rounded-md disabled:opacity-50 hover:bg-gray-300"
+                  onClick={handleUndo}
+                  disabled={currentStep <= 0}
+                >
+                  Undo
+                </button>
+                <button
+                  className="px-3 py-1 bg-gray-200 text-gray-900 rounded-md disabled:opacity-50 hover:bg-gray-300"
+                  onClick={handleRedo}
+                  disabled={currentStep >= historyRef.current.length - 1}
+                >
+                  Redo
+                </button>
+              </div>
             )}
           </div>
         </div>
-        
-        {/* Canvas area */}
-        <div className="md:col-span-6">
-          {/* Background Preview Selector */}
-          <div className="mb-3 text-center">
-            <h4 className="font-medium mb-2 text-gray-900">Background Preview</h4>
-            <div className="inline-flex space-x-2 bg-gray-50 rounded-lg p-1">
-              <button
-                onClick={() => setBackgroundPreview('checkerboard')}
-                className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-                  backgroundPreview === 'checkerboard' 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                Checkerboard
-              </button>
-              <button
-                onClick={() => setBackgroundPreview('white')}
-                className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-                  backgroundPreview === 'white' 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                White
-              </button>
-              <button
-                onClick={() => setBackgroundPreview('black')}
-                className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-                  backgroundPreview === 'black' 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                Black
-              </button>
-            </div>
-          </div>
 
-          <div className={`canvas-wrapper border border-gray-300 rounded-lg overflow-hidden relative aspect-square max-w-md mx-auto ${isEyedropper ? 'eyedropper-active' : selectedColor ? 'color-active' : ''}`}>
-            {/* Background layer */}
-            <div 
-              className="absolute inset-0" 
-              style={{
-                backgroundColor: backgroundPreview === 'white' ? 'white' : 
-                               backgroundPreview === 'black' ? 'black' : 'transparent',
-                backgroundImage: backgroundPreview === 'checkerboard' 
-                  ? 'linear-gradient(45deg, #e0e0e0 25%, transparent 25%), linear-gradient(-45deg, #e0e0e0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e0e0e0 75%), linear-gradient(-45deg, transparent 75%, #e0e0e0 75%)'
-                  : 'none',
-                backgroundSize: backgroundPreview === 'checkerboard' ? '8px 8px' : undefined,
-                backgroundPosition: backgroundPreview === 'checkerboard' ? '0 0, 0 4px, 4px -4px, -4px 0px' : undefined,
-                zIndex: 0
-              }}
-            />
-            <canvas
-              ref={canvasRef}
-              onClick={handleCanvasClick}
-              onMouseDown={handleCanvasMouseDown}
-              onMouseMove={handleCanvasMouseMove}
-              onMouseUp={handleCanvasMouseUp}
-              onMouseLeave={handleCanvasMouseLeave}
-              className={`pixel-canvas relative z-10 ${isEyedropper ? 'eyedropper-mode' : selectedColor ? 'color-mode' : ''}`}
-              style={{
-                imageRendering: 'pixelated',
-                width: '100%',
-                height: '100%',
-                aspectRatio: '1',
-                background: 'none'
-              }}
-            />
-          </div>
-          
-          {/* Undo/Redo controls */}
-          <div className="mt-3 flex justify-center space-x-3 mb-4">
-            <button
-              className="px-3 py-1 bg-gray-200 text-gray-900 rounded-md disabled:opacity-50 hover:bg-gray-300"
-              onClick={handleUndo}
-              disabled={currentStep <= 0}
-            >
-              Undo
-            </button>
-            <button
-              className="px-3 py-1 bg-gray-200 text-gray-900 rounded-md disabled:opacity-50 hover:bg-gray-300"
-              onClick={handleRedo}
-              disabled={currentStep >= historyRef.current.length - 1}
-            >
-              Redo
-            </button>
-          </div>
-        </div>
-        
         {/* Tools and Color Controls */}
-        <div className="md:col-span-3">
-          {/* Tools and Color Controls Container */}
-          <div className="flex">
-            {/* Left Column - Tools and Custom Color */}
-            <div className="flex-1 mr-2">
-              {/* Tools Section */}
-              <div className="mb-6">
-                <h4 className="font-medium mb-2 text-gray-900">Tools</h4>
-                <div className="flex flex-col space-y-2">
-                  <button 
-                    className={`flex items-center space-x-2 p-2 rounded-md ${isBrush ? 'bg-blue-100 border-blue-500 border-2 text-gray-900' : 'bg-gray-50 hover:bg-gray-100 text-gray-900'}`}
-                    onClick={toggleBrush}
-                    title="Paint brush"
-                  >
-                    <img src="/icons/brush.svg" alt="Brush" className="w-5 h-5" />
-                    <span>Brush</span>
-                  </button>
-                  <button 
-                    className={`flex items-center space-x-2 p-2 rounded-md ${isEyedropper ? 'bg-blue-100 border-blue-500 border-2 text-gray-900' : 'bg-gray-50 hover:bg-gray-100 text-gray-900'}`}
-                    onClick={toggleEyedropper}
-                    title="Sample color from the canvas"
-                  >
-                    <img src="/icons/eyedropper.svg" alt="Eyedropper" className="w-5 h-5" />
-                    <span>Eyedropper</span>
-                  </button>
-                  <button 
-                    className={`flex items-center space-x-2 p-2 rounded-md ${isEraser ? 'bg-blue-100 border-blue-500 border-2 text-gray-900' : 'bg-gray-50 hover:bg-gray-100 text-gray-900'}`}
-                    onClick={toggleEraser}
-                    title="Eraser (transparent)"
-                  >
-                    <img src="/icons/eraser.svg" alt="Eraser" className="w-5 h-5" />
-                    <span>Eraser</span>
-                  </button>
-                  <button 
-                    className={`flex items-center space-x-2 p-2 rounded-md ${isPaintBucket ? 'bg-blue-100 border-blue-500 border-2 text-gray-900' : 'bg-gray-50 hover:bg-gray-100 text-gray-900'}`}
-                    onClick={togglePaintBucket}
-                    title="Paint bucket (fill)"
-                  >
-                    <img src="/icons/paintbucket.svg" alt="Paint Bucket" className="w-5 h-5" />
-                    <span>Paint Bucket</span>
-                  </button>
-                </div>
-              </div>
+        <div className="lg:col-span-1">
+          {/* Action Buttons - Moved to top */}
+          <div className="mb-4 space-y-2">
+            <button
+              onClick={handleComplete}
+              className="w-full py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            >
+              Save Edits
+            </button>
+            <button
+              onClick={onCancel}
+              className="w-full py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+            >
+              Cancel
+            </button>
+          </div>
 
-              {/* Custom Color Section */}
-              <div className="mb-6">
-                <h4 className="font-medium mb-2 text-gray-900">Add Custom Color</h4>
-                <div className="flex items-center space-x-2 mb-2">
-                  <div className="relative w-10 h-10">
-                    <div 
-                      className="absolute inset-0 rounded-md"
-                      style={{
-                        backgroundImage: 'linear-gradient(45deg, #e0e0e0 25%, transparent 25%), linear-gradient(-45deg, #e0e0e0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e0e0e0 75%), linear-gradient(-45deg, transparent 75%, #e0e0e0 75%)',
-                        backgroundSize: '8px 8px',
-                        backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px'
-                      }}
+          <div className="space-y-3">
+            {/* Tools Section */}
+            <div className="bg-white p-2.5 rounded-lg border border-gray-200">
+              <h4 className="font-medium mb-2 text-gray-900 text-sm">Drawing Tools</h4>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button 
+                  className={`flex items-center justify-center space-x-2 p-1.5 rounded-md ${
+                    isBrush ? 'bg-blue-100 border-blue-500 border-2 text-gray-900' : 'bg-gray-50 hover:bg-gray-100 text-gray-900'
+                  }`}
+                  onClick={toggleBrush}
+                  title="Paint brush"
+                >
+                  <img src="/icons/brush.svg" alt="Brush" className="w-4 h-4" />
+                  <span className="text-xs">Brush</span>
+                </button>
+                <button 
+                  className={`flex items-center justify-center space-x-2 p-1.5 rounded-md ${
+                    isEyedropper ? 'bg-blue-100 border-blue-500 border-2 text-gray-900' : 'bg-gray-50 hover:bg-gray-100 text-gray-900'
+                  }`}
+                  onClick={toggleEyedropper}
+                  title="Sample color from the canvas"
+                >
+                  <img src="/icons/eyedropper.svg" alt="Eyedropper" className="w-4 h-4" />
+                  <span className="text-xs">Pick</span>
+                </button>
+                <button 
+                  className={`flex items-center justify-center space-x-2 p-1.5 rounded-md ${
+                    isEraser ? 'bg-blue-100 border-blue-500 border-2 text-gray-900' : 'bg-gray-50 hover:bg-gray-100 text-gray-900'
+                  }`}
+                  onClick={toggleEraser}
+                  title="Eraser (transparent)"
+                >
+                  <img src="/icons/eraser.svg" alt="Eraser" className="w-4 h-4" />
+                  <span className="text-xs">Erase</span>
+                </button>
+                <button 
+                  className={`flex items-center justify-center space-x-2 p-1.5 rounded-md ${
+                    isPaintBucket ? 'bg-blue-100 border-blue-500 border-2 text-gray-900' : 'bg-gray-50 hover:bg-gray-100 text-gray-900'
+                  }`}
+                  onClick={togglePaintBucket}
+                  title="Paint bucket (fill)"
+                >
+                  <img src="/icons/paintbucket.svg" alt="Paint Bucket" className="w-4 h-4" />
+                  <span className="text-xs">Fill</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Color Controls */}
+            <div className="bg-white p-2.5 rounded-lg border border-gray-200">
+              <div className="space-y-3">
+                {/* Custom Color Section */}
+                <div>
+                  <h4 className="font-medium mb-1.5 text-gray-900 text-sm">Custom Color</h4>
+                  <div className="flex items-center gap-1.5">
+                    <div className="relative w-6 h-6 flex-shrink-0">
+                      <div 
+                        className="absolute inset-0 rounded"
+                        style={{
+                          backgroundImage: 'linear-gradient(45deg, #e0e0e0 25%, transparent 25%), linear-gradient(-45deg, #e0e0e0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e0e0e0 75%), linear-gradient(-45deg, transparent 75%, #e0e0e0 75%)',
+                          backgroundSize: '6px 6px',
+                          backgroundPosition: '0 0, 0 3px, 3px -3px, -3px 0px'
+                        }}
+                      />
+                      <button
+                        onClick={() => setShowColorPicker(!showColorPicker)}
+                        className={`absolute inset-0 border rounded ${selectedColor && selectedColor.hex === customColor ? 'ring-2 ring-blue-500' : 'border-gray-300'}`}
+                        style={{ 
+                          backgroundColor: selectedColor?.rgba || 'transparent'
+                        }}
+                        title="Click to open color picker"
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      value={customColor}
+                      onChange={(e) => setCustomColor(e.target.value)}
+                      className="flex-1 min-w-0 px-1.5 py-1 border border-gray-300 rounded text-sm"
+                      placeholder="#RRGGBB"
                     />
                     <button
-                      onClick={() => setShowColorPicker(!showColorPicker)}
-                      className={`absolute inset-0 border rounded-md ${selectedColor && selectedColor.hex === customColor ? 'ring-2 ring-blue-500' : 'border-gray-300'}`}
-                      style={{ 
-                        backgroundColor: selectedColor?.rgba || 'transparent'
-                      }}
-                      title="Click to open color picker"
-                    />
+                      onClick={addCustomColor}
+                      className="flex-shrink-0 h-6 w-6 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 inline-flex items-center justify-center"
+                      title="Add to palette"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 3a1 1 0 00-1 1v5H4a1 1 0 100 2h5v5a1 1 0 102 0v-5h5a1 1 0 100-2h-5V4a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </button>
                   </div>
-                  <input
-                    type="text"
-                    value={customColor}
-                    onChange={(e) => setCustomColor(e.target.value)}
-                    className="flex-1 px-2 py-1 border border-gray-300 rounded-md text-sm"
-                    placeholder="#RRGGBB"
-                  />
-                  <button
-                    onClick={addCustomColor}
-                    className="px-3 py-1 bg-blue-500 text-white rounded-md text-sm whitespace-nowrap"
-                  >
-                    Add
-                  </button>
                 </div>
-              </div>
 
-              {/* Action Buttons */}
-              <div className="space-y-2">
-                <button
-                  onClick={handleComplete}
-                  className="w-full py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                >
-                  Save Edits
-                </button>
-                <button
-                  onClick={onCancel}
-                  className="w-full py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-
-            {/* Right Column - Color Palette */}
-            <div className="w-32">
-              <h4 className="font-medium mb-2 text-gray-900">Colors</h4>
-              <div className="color-palette grid grid-cols-2 gap-1 p-1 border border-gray-200 rounded bg-white max-h-[calc(100vh-300px)] overflow-y-auto">
-                {colors.map((color, index) => (
-                  <button
-                    key={index}
-                    className={`aspect-square rounded-md ${selectedColor === color ? 'ring-2 ring-blue-500' : 'border border-gray-300'}`}
-                    style={{ 
-                      backgroundColor: color.rgba, 
-                      backgroundImage: color.a < 255 
-                        ? 'repeating-conic-gradient(#f0f0f0 0% 25%, #ffffff 0% 50%) 50% / 4px 4px' 
-                        : 'none'
-                    }}
-                    onClick={() => {
-                      setSelectedColor(color);
-                      // If no tool is active, activate brush
-                      if (!isBrush && !isEyedropper && !isPaintBucket) {
-                        setIsBrush(true);
-                      }
-                    }}
-                    title={color.hex}
-                  />
-                ))}
+                {/* Color Palette */}
+                <div>
+                  <h4 className="font-medium mb-1.5 text-gray-900 text-sm">Color Palette</h4>
+                  <div className="color-palette flex flex-wrap gap-0.5 p-0.5 border border-gray-200 rounded bg-white max-h-[120px] overflow-y-auto">
+                    {colors.map((color, index) => (
+                      <button
+                        key={index}
+                        className={`w-8 h-8 rounded-sm ${selectedColor === color ? 'ring-1 ring-blue-500' : 'border border-gray-200'}`}
+                        style={{ 
+                          backgroundColor: color.rgba, 
+                          backgroundImage: color.a < 255 
+                            ? 'repeating-conic-gradient(#f0f0f0 0% 25%, #ffffff 0% 50%) 50% / 4px 4px' 
+                            : 'none'
+                        }}
+                        onClick={() => {
+                          setSelectedColor(color);
+                          if (!isBrush && !isEyedropper && !isPaintBucket) {
+                            setIsBrush(true);
+                          }
+                        }}
+                        title={color.hex}
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -941,11 +1240,9 @@ const PixelEditor = ({
                   hex: hex
                 };
                 
-                // Update both states at once to prevent feedback
                 setSelectedColor(tempColor);
                 setCustomColor(hex);
                 
-                // Activate brush tool and deactivate others
                 setIsBrush(true);
                 setIsEyedropper(false);
                 setIsPaintBucket(false);
@@ -973,7 +1270,7 @@ const PixelEditor = ({
 
       {/* Eyedropper notification */}
       {isEyedropper && (
-        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-blue-100 text-blue-800 px-4 py-2 rounded-lg shadow-lg">
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-blue-100 text-blue-800 px-4 py-2 rounded-lg shadow-lg z-50">
           Click on a pixel to pick its color
         </div>
       )}
