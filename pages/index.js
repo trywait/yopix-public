@@ -625,7 +625,7 @@ export default function Home() {
                 </div>
                 
                 <div className="flex flex-col md:flex-row gap-8 mb-6">
-                  <div className="flex-1">
+                  <div className="flex-1 hidden lg:block">
                     <h3 className="font-medium mb-2">Original Image</h3>
                     <ImagePreview 
                       imageUrl={preprocessedImage} 

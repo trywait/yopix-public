@@ -1483,7 +1483,7 @@ const PixelEditor = ({
             {/* Tools Section */}
             <div className="bg-white p-2.5 rounded-lg border border-gray-200">
               <h4 className="font-medium mb-2 text-gray-900 text-sm">Drawing Tools</h4>
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="grid grid-cols-4 xs:grid-cols-2 gap-1.5">
                 <button 
                   className={`flex items-center justify-center space-x-2 p-1.5 rounded-md ${
                     isBrush ? 'bg-blue-100 border-blue-500 border-2 text-gray-900' : 'bg-gray-50 hover:bg-gray-100 text-gray-900'
@@ -1492,7 +1492,7 @@ const PixelEditor = ({
                   title="Paint brush"
                 >
                   <img src="/icons/brush.svg" alt="Brush" className="w-4 h-4" />
-                  <span className="text-xs">Brush</span>
+                  <span className="hidden xs:inline text-xs">Brush</span>
                 </button>
                 <button 
                   className={`flex items-center justify-center space-x-2 p-1.5 rounded-md ${
@@ -1502,7 +1502,7 @@ const PixelEditor = ({
                   title="Sample color from the canvas"
                 >
                   <img src="/icons/eyedropper.svg" alt="Eyedropper" className="w-4 h-4" />
-                  <span className="text-xs">Pick</span>
+                  <span className="hidden xs:inline text-xs">Pick</span>
                 </button>
                 <button 
                   className={`flex items-center justify-center space-x-2 p-1.5 rounded-md ${
@@ -1512,7 +1512,7 @@ const PixelEditor = ({
                   title="Eraser (transparent)"
                 >
                   <img src="/icons/eraser.svg" alt="Eraser" className="w-4 h-4" />
-                  <span className="text-xs">Erase</span>
+                  <span className="hidden xs:inline text-xs">Erase</span>
                 </button>
                 <button 
                   className={`flex items-center justify-center space-x-2 p-1.5 rounded-md ${
@@ -1522,80 +1522,75 @@ const PixelEditor = ({
                   title="Paint bucket (fill)"
                 >
                   <img src="/icons/paintbucket.svg" alt="Paint Bucket" className="w-4 h-4" />
-                  <span className="text-xs">Fill</span>
+                  <span className="hidden xs:inline text-xs">Fill</span>
                 </button>
               </div>
             </div>
 
-            {/* Color Controls */}
+            {/* Custom Color Section */}
             <div className="bg-white p-2.5 rounded-lg border border-gray-200">
-              <div className="space-y-3">
-                {/* Custom Color Section */}
-                <div>
-                  <h4 className="font-medium mb-1.5 text-gray-900 text-sm">Custom Color</h4>
-                  <div className="flex items-center gap-1.5">
-                    <div className="relative w-6 h-6 flex-shrink-0">
-                      <div 
-                        className="absolute inset-0 rounded"
-                        style={{
-                          backgroundImage: 'linear-gradient(45deg, #e0e0e0 25%, transparent 25%), linear-gradient(-45deg, #e0e0e0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e0e0e0 75%), linear-gradient(-45deg, transparent 75%, #e0e0e0 75%)',
-                          backgroundSize: '6px 6px',
-                          backgroundPosition: '0 0, 0 3px, 3px -3px, -3px 0px'
-                        }}
-                      />
-                      <button
-                        onClick={() => setShowColorPicker(!showColorPicker)}
-                        className={`absolute inset-0 border rounded ${selectedColor && selectedColor.hex === customColor ? 'ring-2 ring-blue-500' : 'border-gray-300'}`}
-                        style={{ 
-                          backgroundColor: selectedColor?.rgba || 'transparent'
-                        }}
-                        title="Click to open color picker"
-                      />
-                    </div>
-                    <input
-                      type="text"
-                      value={customColor}
-                      onChange={(e) => setCustomColor(e.target.value)}
-                      className="flex-1 min-w-0 px-1.5 py-1 border border-gray-300 rounded text-sm"
-                      placeholder="#RRGGBB"
-                    />
-                    <button
-                      onClick={addCustomColor}
-                      className="flex-shrink-0 h-6 w-6 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 inline-flex items-center justify-center"
-                      title="Add to palette"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 3a1 1 0 00-1 1v5H4a1 1 0 100 2h5v5a1 1 0 102 0v-5h5a1 1 0 100-2h-5V4a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                  </div>
+              <h4 className="font-medium mb-1.5 text-gray-900 text-sm">Custom Color</h4>
+              <div className="flex items-center gap-1.5">
+                <div className="relative w-6 h-6 flex-shrink-0">
+                  <div 
+                    className="absolute inset-0 rounded"
+                    style={{
+                      backgroundImage: 'linear-gradient(45deg, #e0e0e0 25%, transparent 25%), linear-gradient(-45deg, #e0e0e0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e0e0e0 75%), linear-gradient(-45deg, transparent 75%, #e0e0e0 75%)',
+                      backgroundSize: '6px 6px',
+                      backgroundPosition: '0 0, 0 3px, 3px -3px, -3px 0px'
+                    }}
+                  />
+                  <button
+                    onClick={() => setShowColorPicker(!showColorPicker)}
+                    className={`absolute inset-0 border rounded ${selectedColor && selectedColor.hex === customColor ? 'ring-2 ring-blue-500' : 'border-gray-300'}`}
+                    style={{ 
+                      backgroundColor: selectedColor?.rgba || 'transparent'
+                    }}
+                    title="Click to open color picker"
+                  />
                 </div>
+                <input
+                  type="text"
+                  value={customColor}
+                  onChange={(e) => setCustomColor(e.target.value)}
+                  className="flex-1 min-w-0 px-1.5 py-1 border border-gray-300 rounded text-sm"
+                  placeholder="#RRGGBB"
+                />
+                <button
+                  onClick={addCustomColor}
+                  className="flex-shrink-0 h-6 w-6 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 inline-flex items-center justify-center"
+                  title="Add to palette"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 3a1 1 0 00-1 1v5H4a1 1 0 100 2h5v5a1 1 0 102 0v-5h5a1 1 0 100-2h-5V4a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            </div>
 
-                {/* Color Palette */}
-                <div>
-                  <h4 className="font-medium mb-1.5 text-gray-900 text-sm">Color Palette</h4>
-                  <div className="color-palette flex flex-wrap gap-0.5 p-0.5 border border-gray-200 rounded bg-white max-h-[120px] overflow-y-auto">
-                    {colors.map((color, index) => (
-                      <button
-                        key={index}
-                        className={`w-8 h-8 rounded-sm ${selectedColor === color ? 'ring-1 ring-blue-500' : 'border border-gray-200'}`}
-                        style={{ 
-                          backgroundColor: color.rgba, 
-                          backgroundImage: color.a < 255 
-                            ? 'repeating-conic-gradient(#f0f0f0 0% 25%, #ffffff 0% 50%) 50% / 4px 4px' 
-                            : 'none'
-                        }}
-                        onClick={() => {
-                          setSelectedColor(color);
-                          if (!isBrush && !isEyedropper && !isPaintBucket) {
-                            setIsBrush(true);
-                          }
-                        }}
-                        title={color.hex}
-                      />
-                    ))}
-                  </div>
-                </div>
+            {/* Color Palette - Now in its own container */}
+            <div className="bg-white p-2.5 rounded-lg border border-gray-200">
+              <h4 className="font-medium mb-1.5 text-gray-900 text-sm">Color Palette</h4>
+              <div className="color-palette flex flex-wrap gap-0.5 p-0.5 border border-gray-200 rounded bg-white max-h-[120px] overflow-y-auto">
+                {colors.map((color, index) => (
+                  <button
+                    key={index}
+                    className={`w-8 h-8 rounded-sm ${selectedColor === color ? 'ring-1 ring-blue-500' : 'border border-gray-200'}`}
+                    style={{ 
+                      backgroundColor: color.rgba, 
+                      backgroundImage: color.a < 255 
+                        ? 'repeating-conic-gradient(#f0f0f0 0% 25%, #ffffff 0% 50%) 50% / 4px 4px' 
+                        : 'none'
+                    }}
+                    onClick={() => {
+                      setSelectedColor(color);
+                      if (!isBrush && !isEyedropper && !isPaintBucket) {
+                        setIsBrush(true);
+                      }
+                    }}
+                    title={color.hex}
+                  />
+                ))}
               </div>
             </div>
           </div>
