@@ -586,6 +586,16 @@ const SimpleImagePreprocessor = ({ imageUrl, onProcessed, onError }) => {
             {/* Left column - Cropper area */}
             <div className="lg:w-7/12">
               <div className="flex flex-col space-y-4">
+                {/* Guidance tooltip for mobile view */}
+                <div className="lg:hidden p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center">
+                    <span className="text-xl mr-2">💡</span>
+                    <p className="text-sm text-blue-700">
+                      For best results with Yoto pixel art: Remove the background and zoom to fill as much of the frame as possible
+                    </p>
+                  </div>
+                </div>
+
                 {/* Image preview with crop frame */}
                 <div 
                   ref={containerRef}
@@ -648,6 +658,16 @@ const SimpleImagePreprocessor = ({ imageUrl, onProcessed, onError }) => {
 
             {/* Right column - Controls and cropped preview */}
             <div className="lg:w-5/12 flex flex-col">
+              {/* Guidance tooltip for desktop view */}
+              <div className="hidden lg:block mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center">
+                  <span className="text-xl mr-2">💡</span>
+                  <p className="text-sm text-blue-700">
+                    For best results with Yoto pixel art: Remove the background and zoom to fill as much of the frame as possible
+                  </p>
+                </div>
+              </div>
+
               {/* Controls card */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-4">
                 {/* Tab navigation */}
@@ -852,6 +872,13 @@ const SimpleImagePreprocessor = ({ imageUrl, onProcessed, onError }) => {
                 Drag within the image to position crop area
               </p>
             </div>
+          </div>
+
+          {/* Remove the tooltip from its old position */}
+          <div className="mt-3">
+            <h3 className="text-sm font-medium text-gray-700 mb-2">
+              PREVIEW
+            </h3>
           </div>
         </div>
       )}

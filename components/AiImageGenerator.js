@@ -18,19 +18,23 @@ const AiImageGenerator = ({ onImageSelect, compact = false }) => {
       const userText = prompt.trim();
       
       // Create the enhanced prompt for the API
-      const enhancedPrompt = `First, create a solid black (#000000) background that fills the entire image. Then, on this black background, create a vibrant, iconic representation of a ${userText}. This is critical: the background MUST be pure black or very dark (#000000 to #111111), not white or light colored.
+      const enhancedPrompt = `Create an image with these strict requirements:
 
-The design requirements are:
-- Start with a completely black canvas (#000000)
-- Use bright, neon-like colors for the subject that stand out against black
-- The subject should be composed of distinct, solid-colored shapes
-- Make the subject large and centered, filling 80% of the frame
-- Use chunky, block-like shapes similar to retro video game sprites
-- Keep it extremely simple and geometric - no gradients or shading
-- The design should work well when reduced to 16x16 pixels
-- Avoid any text, borders, or decorative elements
-- Every color used should be high-intensity and pop against the black
-- Think arcade game graphics or neon signs at night`;
+Background: Solid, absolute black (#000000). The background MUST be a single, uniform shade of pure black. There should be absolutely no other colors, not even the slightest hint of gray or gradients.
+Subject: A vibrant, iconic representation of a ${userText}
+Design Style:
+- Use bright, saturated colors that stand out dramatically against the black background.
+- Create the subject using distinct, solid-colored shapes.
+- Make the subject large and centered, a majority (90%) of the image frame.
+- Utilize chunky, block-like shapes reminiscent of retro 8-bit video game sprites.
+- Maintain extreme simplicity and geometric forms; strictly no gradients or shading.
+- The design should be easily recognizable and effective when scaled down to 16x16 pixels.
+- Exclude any text, borders, or purely decorative elements.
+- Ensure every color used for the subject is vividly distinct and highly contrasting against the pure black background.
+- IMPORTANT: Use ONLY solid blocks of color - no outlines, no strokes, no borders, no thin lines, no edges. Every shape should be a solid, filled color.
+- The design must work at 16x16 resolution, so avoid any fine details, thin elements, or complex shapes that would be lost at low resolution.
+- The overall aesthetic should evoke retro video game sprites or modern, clean minimalist icons.
+CRITICAL: The background MUST be pure, solid black (#000000). There should be no other color in the background whatsoever.`;
 
       const response = await fetch('/api/generate-ai-image', {
         method: 'POST',
