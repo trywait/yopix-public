@@ -33,6 +33,8 @@ const PixelEditor = ({
   const [lastCanvasState, setLastCanvasState] = useState(null);
   const [canvasImageData, setCanvasImageData] = useState(null);
   const [previousTool, setPreviousTool] = useState('brush');
+  const [isMouseDown, setIsMouseDown] = useState(false);
+  const [isUndoingOrRedoing, setIsUndoingOrRedoing] = useState(false);
 
   // Add keyboard shortcut support for undo/redo
   useEffect(() => {
@@ -83,13 +85,48 @@ const PixelEditor = ({
       img.onload = () => {
         const ctx = canvasRef.current.getContext('2d', { willReadFrequently: true, alpha: true });
         
-        // If we have history, use the current state
-        if (historyRef.current.length > 0 && currentStep >= 0) {
-          ctx.putImageData(historyRef.current[currentStep], 0, 0);
-        } else {
-          // Otherwise reinitialize from the image
-          ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+        // Set canvas dimensions and disable smoothing
+        canvasRef.current.width = 16;
+        canvasRef.current.height = 16;
+        ctx.imageSmoothingEnabled = false;
+        
+        // Clear canvas first
+        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+        
+        try {
+          // If we have history and the current step is valid
+          if (historyRef.current.length > 0 && currentStep >= 0 && currentStep < historyRef.current.length) {
+            const historyState = historyRef.current[currentStep];
+            // Verify the ImageData is valid
+            if (historyState && historyState.data && historyState.width === 16 && historyState.height === 16) {
+              ctx.putImageData(historyState, 0, 0);
+            } else {
+              // If history state is invalid, draw from the image
+              ctx.drawImage(img, 0, 0, 16, 16);
+              // Reinitialize history with the current state
+              const initialState = ctx.getImageData(0, 0, 16, 16);
+              historyRef.current = [initialState];
+              currentStepRef.current = 0;
+              setCurrentStep(0);
+            }
+          } else {
+            // No valid history, draw from the image
+            ctx.drawImage(img, 0, 0, 16, 16);
+            // Initialize history with the current state
+            const initialState = ctx.getImageData(0, 0, 16, 16);
+            historyRef.current = [initialState];
+            currentStepRef.current = 0;
+            setCurrentStep(0);
+          }
+        } catch (error) {
+          console.error("Error restoring canvas state:", error);
+          // Fallback to drawing from the image
           ctx.drawImage(img, 0, 0, 16, 16);
+          // Reinitialize history
+          const initialState = ctx.getImageData(0, 0, 16, 16);
+          historyRef.current = [initialState];
+          currentStepRef.current = 0;
+          setCurrentStep(0);
         }
       };
       
@@ -361,20 +398,25 @@ const PixelEditor = ({
 
   // Handle mouse up on canvas
   const handleCanvasMouseUp = () => {
-    if (isPainting) {
-      // Ensure we're done painting before capturing history
-      requestAnimationFrame(() => {
-        captureHistory();
-      });
+    // Remove canvas-specific history capture since it's handled by global handler
+    setIsPainting(false);
+  };
+
+  // Handle mouse enter on canvas
+  const handleCanvasMouseEnter = (e) => {
+    // If mouse button is still pressed globally and we're in a painting state
+    if (isMouseDown && !isUndoingOrRedoing) {
+      setIsPainting(true);
+      // Continue painting/erasing from the new position
+      const coords = getPixelCoordinates(e);
+      if (coords) {
+        paintPixel(coords.x, coords.y);
+      }
     }
   };
 
   // Handle mouse leave on canvas
   const handleCanvasMouseLeave = () => {
-    if (isPainting) {
-      captureHistory();
-    }
-    // Reset cursor when leaving canvas
     if (canvasRef.current) {
       canvasRef.current.style.cursor = 'crosshair';
     }
@@ -406,8 +448,8 @@ const PixelEditor = ({
       // Perform flood fill
       floodFill(coords.x, coords.y, targetColor, selectedColor);
       
-      // Start painting state to trigger history capture on mouse up
-      setIsPainting(true);
+      // Capture history immediately for paint bucket
+      captureHistory();
       return;
     }
     
@@ -446,20 +488,17 @@ const PixelEditor = ({
       setSelectedColor(pickedColor);
       setCustomColor(pickedColor.hex);
       
-      // Restore previous tool
+      // Restore the previous tool
       setIsEyedropper(false);
-      switch (previousTool) {
-        case 'brush':
-          setIsBrush(true);
-          break;
-        case 'paintBucket':
-          setIsPaintBucket(true);
-          break;
-        case 'eraser':
-          setIsEraser(true);
-          break;
-        default:
-          setIsBrush(true);
+      if (previousTool === 'paintBucket') {
+        setIsPaintBucket(true);
+        setIsBrush(false);
+        setIsEraser(false);
+      } else {
+        // Default to brush for all other cases
+        setIsBrush(true);
+        setIsPaintBucket(false);
+        setIsEraser(false);
       }
       return;
     }
@@ -503,6 +542,8 @@ const PixelEditor = ({
     
     if (currentStepRef.current <= 0) return;
     
+    setIsUndoingOrRedoing(true);
+    
     // Reset painting state first
     setIsPainting(false);
     setLastPaintedPixel({ x: -1, y: -1 });
@@ -522,6 +563,9 @@ const PixelEditor = ({
     // Update React state last
     setCurrentStep(newStep);
     setHasEdits(true);
+    
+    // Reset the undo/redo flag after a short delay
+    setTimeout(() => setIsUndoingOrRedoing(false), 50);
   };
 
   // Redo last undone action
@@ -529,6 +573,8 @@ const PixelEditor = ({
     if (!canvasContextRef.current || !historyRef.current.length || !isInitializedRef.current) return;
     
     if (currentStepRef.current >= historyRef.current.length - 1) return;
+    
+    setIsUndoingOrRedoing(true);
     
     const newStep = currentStepRef.current + 1;
     const newState = historyRef.current[newStep];
@@ -545,6 +591,9 @@ const PixelEditor = ({
     // Update React state last
     setCurrentStep(newStep);
     setHasEdits(true);
+    
+    // Reset the undo/redo flag after a short delay
+    setTimeout(() => setIsUndoingOrRedoing(false), 50);
   };
 
   // Modify the handleComplete function to ensure we're using the current canvas state
@@ -636,6 +685,10 @@ const PixelEditor = ({
       setIsEyedropper(false);
       setIsPaintBucket(false);
       setIsBrush(false);
+    } else {
+      // Switch back to brush when toggling off
+      setIsEraser(false);
+      setIsBrush(true);
     }
   };
 
@@ -662,10 +715,10 @@ const PixelEditor = ({
       setIsEyedropper(false);
       setIsBrush(false);
       setIsEraser(false);
-    }
-    // Reset cursor when toggling paint bucket
-    if (canvasRef.current) {
-      canvasRef.current.style.cursor = !isPaintBucket ? 'crosshair' : 'pointer';
+    } else {
+      // Switch back to brush when toggling off
+      setIsPaintBucket(false);
+      setIsBrush(true);
     }
   };
 
@@ -720,14 +773,14 @@ const PixelEditor = ({
     }
   }, [customColor]);
 
-  // Create canvas for color cursor with direct implementation
+  // Update cursor effect
   useEffect(() => {
     if (!canvasRef.current) return;
     
     try {
       // Reset classes for visual indicator
       const canvas = canvasRef.current;
-      canvas.classList.remove('eyedropper-mode', 'color-mode', 'eraser-mode');
+      canvas.classList.remove('eyedropper-mode', 'color-mode', 'eraser-mode', 'paint-bucket-mode');
       
       // Set canvas background to be transparent
       canvas.style.background = 'none';
@@ -738,7 +791,6 @@ const PixelEditor = ({
         
         // Try three different approaches for eyedropper cursor
         const eyedropperCursor = `url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAF7mlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS42LWMxNDUgNzkuMTYzNDk5LCAyMDE4LzA4LzEzLTE2OjQwOjIyICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIgeG1sbnM6cGhvdG9zaG9wPSJodHRwOi8vbnMuYWRvYmUuY29tL3Bob3Rvc2hvcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RFdnQ9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZUV2ZW50IyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ0MgMjAxOSAoTWFjaW50b3NoKSIgeG1wOkNyZWF0ZURhdGU9IjIwMjAtMDEtMzFUMTk6MjM6MjArMDE6MDAiIHhtcDpNb2RpZnlEYXRlPSIyMDIwLTAxLTMxVDE5OjI4OjU3KzAxOjAwIiB4bXA6TWV0YWRhdGFEYXRlPSIyMDIwLTAxLTMxVDE5OjI4OjU3KzAxOjAwIiBkYzpmb3JtYXQ9ImltYWdlL3BuZyIgcGhvdG9zaG9wOkNvbG9yTW9kZT0iMyIgcGhvdG9zaG9wOklDQ1Byb2ZpbGU9InNSR0IgSUVDNjE5NjYtMi4xIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOjc3NzE0YjBkLWI3YmYtNDM5Ny04MzA1LWJkMzQzYWJhNWFmYSIgeG1wTU06RG9jdW1lbnRJRD0iYWRvYmU6ZG9jaWQ6cGhvdG9zaG9wOjQ2MjJlNzFhLTBjNTAtNzg0My04OTRiLWUyODZmMzY5OGUzYiIgeG1wTU06T3JpZ2luYWxEb2N1bWVudElEPSJ4bXAuZGlkOjQ1ZTAxZDczLTFiMTYtNGRkYS04OTRjLWFjMTBmMGNlNWI1ZCI+IDx4bXBNTTpIaXN0b3J5PiA8cmRmOlNlcT4gPHJkZjpsaSBzdEV2dDphY3Rpb249ImNyZWF0ZWQiIHN0RXZ0Omluc3RhbmNlSUQ9InhtcC5paWQ6NDVlMDFkNzMtMWIxNi00ZGRhLTg5NGMtYWMxMGYwY2U1YjVkIiBzdEV2dDp3aGVuPSIyMDIwLTAxLTMxVDE5OjIzOjIwKzAxOjAwIiBzdEV2dDpzb2Z0d2FyZUFnZW50PSJBZG9iZSBQaG90b3Nob3AgQ0MgMjAxOSAoTWFjaW50b3NoKSIvPiA8cmRmOmxpIHN0RXZ0OmFjdGlvbj0ic2F2ZWQiIHN0RXZ0Omluc3RhbmNlSUQ9InhtcC5paWQ6NzczMTRiMGQtYjdiZi00Mzk3LTgzMDUtYmQzNDNhYmE1YWZhIiBzdEV2dDp3aGVuPSIyMDIwLTAxLTMxVDE5OjI4OjU3KzAxOjAwIiBzdEV2dDpzb2Z0d2FyZUFnZW50PSJBZG9iZSBQaG90b3Nob3AgQ0MgMjAxOSAoTWFjaW50b3NoKSIgc3RFdnQ6Y2hhbmdlZD0iLyIvPiA8L3JkZjpTZXE+IDwveG1wTU06SGlzdG9yeT4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz5OJuCqAAAD1UlEQVRYhcWXb0xbVRTAf/e+tlQGlK5/NjJwZOA6HIYxxq2LkWA2IbLAXDJJ+KJZ4heTJX7wA5nJgITs04yx+GViEIiJIURchoFgXAQdbg4iyIzjz9baUWjLKKWlr++d/VFKade+UVA8ybe8957T3/n33HOVKIpC9ZdNS+IgmeMgzUeSm+EQxMQ91gRBTivQaDQaAGTJGDZSy7YsG7MRIQlA2CgPJ2KUjNGxX4bCl8LGTwFZ1mtLAOxs7FyqhNLSUi5cuEBxcTG9vb1ER0ej1+uj9jscDpxOJw6Hg4sXL9La2jpvIAvApk2bNiQnJ09ZrVZycnIoKCigrKzM7/zo6GhSUlJISUmhqKiIs2fPcv36dYaHh/2bJyqKkkbw7HrpKStTkSTB85WPsvVJPc4xF5KQeKIsm8GhW0iSpP3r1m3zNR8UXhQExmGXFcXnLlVwfjQvlxybhS2FuUwojjl1vvxmZGjQnB7wI6pLKyoIQbvbbbOnmZKY9IrYnG7P3NR/uiUVzfN34JwKZXn4wUfPd1cUWXaLSCuQoMKWUqAaFBhODuiJnQOQUeAUiNlCRMSqSk6WxI0Wq/Z8VwX4Ioi2XqqiIQMKCCk0HRMCwQWBFkJ4AEGIuCZScaF/L4Qoz6NMiYAxqECk6UuJkgJ/zQ94nrAr8FpkIRKSEAqg+d8I0IYF8G9NqQJsCVFImrn8XmRJUgUYt29/LDYuPvnfm1P27uygOLfYfSBjb1hFNptNdHV1idHRUZGVlRUW/PT3p8Xlny+LqakpMelyiVcrK8X8AE92dnZlbW1tw8DAQMiT0FdfqBp3bX2mUoQB8J3z8/Mbamtrz9XXh+5O9y9QVV8fAzA3Yjxg8vT09EzU19eXtbS0hASZ2wOCCvbR1tbWnGg0Glf7+/vLmpubQwItc8VGOcnvnZqamka9Xn+yoqLiVE9PT4z6TRBMQVBHUOU8derUyeLi4oYdO3Y4/AwHSA0NIKoEr0dFRUVDbW3tO319fUZ/g2XSZgRoJicnjzU1NZ2w2WzbA+2Wgw56oqsLDA0N5TU3N5+w2+1ZgXZLroDXfRTBurVareVtbW0n+vv7/xbhRQDdYttwtfepUMTGxm5vb28/1tnZuYOlJpQIJTb0+8vHnzpY9Z+SWq12ZfctsCO53JKwAEgzf1Z1Y4Vsl/PfB43RfezffwyzKfQGmHBkXE4nPxw7Rsa+LGw7075XFpHT7XbfMm5Jyz13vu/rUPOeAzTlZGXpvALuDg2z7nEjLvfEg55P3wDhyjYGfZxJMgAAAABJRU5ErkJggg==') 3 16, pointer`;
-        canvas.style.cursor = eyedropperCursor;
       } else if (isEraser) {
         // Draw eraser cursor
         const cursorCanvas = document.createElement('canvas');
@@ -766,6 +818,51 @@ const PixelEditor = ({
         // Apply cursor
         const dataURL = cursorCanvas.toDataURL('image/png');
         canvas.style.cursor = `url(${dataURL}) 16 16, not-allowed`;
+      } else if (isPaintBucket && selectedColor) {
+        // Create paint bucket cursor
+        const cursorCanvas = document.createElement('canvas');
+        cursorCanvas.width = 32;
+        cursorCanvas.height = 32;
+        const ctx = cursorCanvas.getContext('2d');
+        
+        // Load and draw the paint bucket SVG
+        const img = new Image();
+        img.onload = () => {
+          // Clear canvas
+          ctx.clearRect(0, 0, 32, 32);
+          
+          // Draw the SVG
+          ctx.drawImage(img, 4, 4, 24, 24);
+          
+          // Get the non-transparent pixels
+          const imageData = ctx.getImageData(0, 0, 32, 32);
+          const data = imageData.data;
+          
+          // Replace black pixels with selected color
+          for (let i = 0; i < data.length; i += 4) {
+            if (data[i + 3] > 0) { // If pixel is not transparent
+              data[i] = selectedColor.r;     // R
+              data[i + 1] = selectedColor.g; // G
+              data[i + 2] = selectedColor.b; // B
+            }
+          }
+          
+          // Put the colored image back
+          ctx.putImageData(imageData, 0, 0);
+          
+          // Add white outline
+          ctx.strokeStyle = 'white';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.rect(3, 3, 26, 26);
+          ctx.stroke();
+          
+          // Apply cursor
+          const dataURL = cursorCanvas.toDataURL('image/png');
+          canvas.style.cursor = `url(${dataURL}) 16 16, pointer`;
+        };
+        img.src = '/icons/paintbucket.svg';
+        
       } else if (selectedColor) {
         // Add visual indicator class
         canvas.classList.add('color-mode');
@@ -804,7 +901,153 @@ const PixelEditor = ({
         canvasRef.current.style.cursor = isEyedropper ? 'crosshair' : 'pointer';
       }
     }
-  }, [isEyedropper, selectedColor, isEraser]);
+  }, [isEyedropper, selectedColor, isEraser, isPaintBucket]);
+
+  // Add canvas enter/leave event handlers
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleMouseEnter = () => {
+      updateToolCursor(canvas);
+    };
+
+    canvas.addEventListener('mouseenter', handleMouseEnter);
+    return () => {
+      canvas.removeEventListener('mouseenter', handleMouseEnter);
+    };
+  }, [isEyedropper, selectedColor, isEraser, isPaintBucket]); // Same dependencies as cursor effect
+
+  // Helper function to update cursor based on current tool
+  const updateToolCursor = (canvas) => {
+    if (!canvas) return;
+    
+    try {
+      if (isEyedropper) {
+        canvas.classList.add('eyedropper-mode');
+        canvas.style.cursor = `url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAF7mlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS42LWMxNDUgNzkuMTYzNDk5LCAyMDE4LzA4LzEzLTE2OjQwOjIyICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIgeG1sbnM6cGhvdG9zaG9wPSJodHRwOi8vbnMuYWRvYmUuY29tL3Bob3Rvc2hvcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RFdnQ9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZUV2ZW50IyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ0MgMjAxOSAoTWFjaW50b3NoKSIgeG1wOkNyZWF0ZURhdGU9IjIwMjAtMDEtMzFUMTk6MjM6MjArMDE6MDAiIHhtcDpNb2RpZnlEYXRlPSIyMDIwLTAxLTMxVDE5OjI4OjU3KzAxOjAwIiB4bXA6TWV0YWRhdGFEYXRlPSIyMDIwLTAxLTMxVDE5OjI4OjU3KzAxOjAwIiBkYzpmb3JtYXQ9ImltYWdlL3BuZyIgcGhvdG9zaG9wOkNvbG9yTW9kZT0iMyIgcGhvdG9zaG9wOklDQ1Byb2ZpbGU9InNSR0IgSUVDNjE5NjYtMi4xIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOjc3NzE0YjBkLWI3YmYtNDM5Ny04MzA1LWJkMzQzYWJhNWFmYSIgeG1wTU06RG9jdW1lbnRJRD0iYWRvYmU6ZG9jaWQ6cGhvdG9zaG9wOjQ2MjJlNzFhLTBjNTAtNzg0My04OTRiLWUyODZmMzY5OGUzYiIgeG1wTU06T3JpZ2luYWxEb2N1bWVudElEPSJ4bXAuZGlkOjQ1ZTAxZDczLTFiMTYtNGRkYS04OTRjLWFjMTBmMGNlNWI1ZCI+IDx4bXBNTTpIaXN0b3J5PiA8cmRmOlNlcT4gPHJkZjpsaSBzdEV2dDphY3Rpb249ImNyZWF0ZWQiIHN0RXZ0Omluc3RhbmNlSUQ9InhtcC5paWQ6NDVlMDFkNzMtMWIxNi00ZGRhLTg5NGMtYWMxMGYwY2U1YjVkIiBzdEV2dDp3aGVuPSIyMDIwLTAxLTMxVDE5OjIzOjIwKzAxOjAwIiBzdEV2dDpzb2Z0d2FyZUFnZW50PSJBZG9iZSBQaG90b3Nob3AgQ0MgMjAxOSAoTWFjaW50b3NoKSIvPiA8cmRmOmxpIHN0RXZ0OmFjdGlvbj0ic2F2ZWQiIHN0RXZ0Omluc3RhbmNlSUQ9InhtcC5paWQ6NzczMTRiMGQtYjdiZi00Mzk3LTgzMDUtYmQzNDNhYmE1YWZhIiBzdEV2dDp3aGVuPSIyMDIwLTAxLTMxVDE5OjI4OjU3KzAxOjAwIiBzdEV2dDpzb2Z0d2FyZUFnZW50PSJBZG9iZSBQaG90b3Nob3AgQ0MgMjAxOSAoTWFjaW50b3NoKSIgc3RFdnQ6Y2hhbmdlZD0iLyIvPiA8L3JkZjpTZXE+IDwveG1wTU06SGlzdG9yeT4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz5OJuCqAAAD1UlEQVRYhcWXb0xbVRTAf/e+tlQGlK5/NjJwZOA6HIYxxq2LkWA2IbLAXDJJ+KJZ4heTJX7wA5nJgITs04yx+GViEIiJIURchoFgXAQdbg4iyIzjz9baUWjLKKWlr++d/VFKade+UVA8ybe8957T3/n33HOVKIpC9ZdNS+IgmeMgzUeSm+EQxMQ91gRBTivQaDQaAGTJGDZSy7YsG7MRIQlA2CgPJ2KUjNGxX4bCl8LGTwFZ1mtLAOxs7FyqhNLSUi5cuEBxcTG9vb1ER0ej1+uj9jscDpxOJw6Hg4sXL9La2jpvIAvApk2bNiQnJ09ZrVZycnIoKCigrKzM7/zo6GhSUlJISUmhqKiIs2fPcv36dYaHh/2bJyqKkkbw7HrpKStTkSTB85WPsvVJPc4xF5KQeKIsm8GhW0iSpP3r1m3zNR8UXhQExmGXFcXnLlVwfjQvlxybhS2FuUwojjl1vvxmZGjQnB7wI6pLKyoIQbvbbbOnmZKY9IrYnG7P3NR/uiUVzfN34JwKZXn4wUfPd1cUWXaLSCuQoMKWUqAaFBhODuiJnQOQUeAUiNlCRMSqSk6WxI0Wq/Z8VwX4Ioi2XqqiIQMKCCk0HRMCwQWBFkJ4AEGIuCZScaF/L4Qoz6NMiYAxqECk6UuJkgJ/zQ94nrAr8FpkIRKSEAqg+d8I0IYF8G9NqQJsCVFImrn8XmRJUgUYt29/LDYuPvnfm1P27uygOLfYfSBjb1hFNptNdHV1idHRUZGVlRUW/PT3p8Xlny+LqakpMelyiVcrK8X8AE92dnZlbW1tw8DAQMiT0FdfqBp3bX2mUoQB8J3z8/Mbamtrz9XXh+5O9y9QVV8fAzA3Yjxg8vT09EzU19eXtbS0hASZ2wOCCvbR1tbWnGg0Glf7+/vLmpubQwItc8VGOcnvnZqamka9Xn+yoqLiVE9PT4z6TRBMQVBHUOU8derUyeLi4oYdO3Y4/AwHSA0NIKoEr0dFRUVDbW3tO319fUZ/g2XSZgRoJicnjzU1NZ2w2WzbA+2Wgw56oqsLDA0N5TU3N5+w2+1ZgXZLroDXfRTBurVareVtbW0n+vv7/xbhRQDdYttwtfepUMTGxm5vb28/1tnZuYOlJpQIJTb0+8vHnzpY9Z+SWq12ZfctsCO53JKwAEgzf1Z1Y4Vsl/PfB43RfezffwyzKfQGmHBkXE4nPxw7Rsa+LGw7075XFpHT7XbfMm5Jyz13vu/rUPOeAzTlZGXpvALuDg2z7nEjLvfEg55P3wDhyjYGfZxJMgAAAABJRU5ErkJggg==') 3 16, pointer`;
+      } else if (isEraser) {
+        const cursorCanvas = document.createElement('canvas');
+        cursorCanvas.width = 32;
+        cursorCanvas.height = 32;
+        const ctx = cursorCanvas.getContext('2d');
+        
+        // Draw X with black outline
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(8, 8);
+        ctx.lineTo(24, 24);
+        ctx.moveTo(24, 8);
+        ctx.lineTo(8, 24);
+        ctx.stroke();
+        
+        // Draw circle around X
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(16, 16, 12, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        const dataURL = cursorCanvas.toDataURL('image/png');
+        canvas.style.cursor = `url(${dataURL}) 16 16, not-allowed`;
+      } else if (isPaintBucket && selectedColor) {
+        const cursorCanvas = document.createElement('canvas');
+        cursorCanvas.width = 32;
+        cursorCanvas.height = 32;
+        const ctx = cursorCanvas.getContext('2d');
+        
+        // Load and draw the paint bucket SVG
+        const img = new Image();
+        img.onload = () => {
+          // Clear canvas
+          ctx.clearRect(0, 0, 32, 32);
+          
+          // First draw white outline
+          ctx.drawImage(img, 4, 4, 24, 24);
+          const imageData = ctx.getImageData(0, 0, 32, 32);
+          const data = imageData.data;
+          
+          // Create white outline by expanding shape
+          for (let i = 0; i < data.length; i += 4) {
+            if (data[i + 3] > 0) { // If pixel is not transparent
+              data[i] = 255;     // White
+              data[i + 1] = 255;
+              data[i + 2] = 255;
+              data[i + 3] = 255;
+            }
+          }
+          ctx.putImageData(imageData, 0, 0);
+          
+          // Draw colored shape slightly smaller
+          ctx.drawImage(img, 5, 5, 22, 22);
+          const coloredData = ctx.getImageData(0, 0, 32, 32);
+          const coloredPixels = coloredData.data;
+          
+          // Color the inner shape
+          for (let i = 0; i < coloredPixels.length; i += 4) {
+            if (coloredPixels[i + 3] > 0) { // If pixel is not transparent
+              // Don't color white outline pixels
+              if (coloredPixels[i] !== 255 || coloredPixels[i + 1] !== 255 || coloredPixels[i + 2] !== 255) {
+                coloredPixels[i] = selectedColor.r;     // R
+                coloredPixels[i + 1] = selectedColor.g; // G
+                coloredPixels[i + 2] = selectedColor.b; // B
+                coloredPixels[i + 3] = 255;            // A
+              }
+            }
+          }
+          
+          // Put the colored image back
+          ctx.putImageData(coloredData, 0, 0);
+          
+          // Apply cursor
+          const dataURL = cursorCanvas.toDataURL('image/png');
+          canvas.style.cursor = `url(${dataURL}) 16 16, pointer`;
+        };
+        img.src = '/icons/paintbucket.svg';
+      } else if (selectedColor) {
+        // Add visual indicator class
+        canvas.classList.add('color-mode');
+        
+        // Create a simple color cursor - make it larger (32x32) for better visibility
+        const cursorCanvas = document.createElement('canvas');
+        cursorCanvas.width = 32;
+        cursorCanvas.height = 32;
+        const ctx = cursorCanvas.getContext('2d');
+        
+        // Draw color square
+        ctx.fillStyle = selectedColor.rgba;
+        ctx.fillRect(0, 0, 32, 32);
+        
+        // Draw strong black border for visibility
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(1, 1, 30, 30);
+        
+        // Draw white inner border for contrast
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(3, 3, 26, 26);
+        
+        // Apply cursor
+        const dataURL = cursorCanvas.toDataURL('image/png');
+        canvas.style.cursor = `url(${dataURL}) 16 16, crosshair`;
+      } else {
+        // Default cursor
+        canvas.style.cursor = 'crosshair';
+      }
+    } catch (error) {
+      console.error("Error setting cursor:", error);
+      // Fallback to simple CSS cursor
+      canvas.style.cursor = isEyedropper ? 'crosshair' : 'pointer';
+    }
+  };
+
+  // Update cursor effect to use the new updateToolCursor function
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    updateToolCursor(canvasRef.current);
+  }, [isEyedropper, selectedColor, isEraser, isPaintBucket]);
 
   // Modify the handleTabSwitch function to properly handle state
   const handleTabSwitch = (tab) => {
@@ -951,6 +1194,44 @@ const PixelEditor = ({
       
       const dataURL = cursorCanvas.toDataURL('image/png');
       canvas.style.cursor = `url(${dataURL}) 16 16, not-allowed`;
+    } else if (isPaintBucket && selectedColor) {
+      // Create paint bucket cursor
+      const cursorCanvas = document.createElement('canvas');
+      cursorCanvas.width = 32;
+      cursorCanvas.height = 32;
+      const ctx = cursorCanvas.getContext('2d');
+      
+      // Load and draw the paint bucket SVG
+      const img = new Image();
+      img.onload = () => {
+        // Clear canvas
+        ctx.clearRect(0, 0, 32, 32);
+        
+        // Draw the SVG
+        ctx.drawImage(img, 4, 4, 24, 24);
+        
+        // Get the non-transparent pixels
+        const imageData = ctx.getImageData(0, 0, 32, 32);
+        const data = imageData.data;
+        
+        // Replace black pixels with selected color
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i + 3] > 0) { // If pixel is not transparent
+            data[i] = selectedColor.r;     // R
+            data[i + 1] = selectedColor.g; // G
+            data[i + 2] = selectedColor.b; // B
+          }
+        }
+        
+        // Put the colored image back
+        ctx.putImageData(imageData, 0, 0);
+        
+        // Apply cursor
+        const dataURL = cursorCanvas.toDataURL('image/png');
+        canvas.style.cursor = `url(${dataURL}) 16 16, pointer`;
+      };
+      img.src = '/icons/paintbucket.svg';
+      
     } else if (selectedColor) {
       const cursorCanvas = document.createElement('canvas');
       cursorCanvas.width = 32;
@@ -1005,6 +1286,30 @@ const PixelEditor = ({
     }
   }, [activeTab, lastCanvasState]);
 
+  // Add global mouse state tracking
+  useEffect(() => {
+    const handleGlobalMouseDown = () => {
+      setIsMouseDown(true);
+    };
+
+    const handleGlobalMouseUp = () => {
+      setIsMouseDown(false);
+      // Only capture history if we were actually painting
+      if (isPainting) {
+        captureHistory();
+      }
+      setIsPainting(false);
+    };
+
+    window.addEventListener('mousedown', handleGlobalMouseDown);
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+
+    return () => {
+      window.removeEventListener('mousedown', handleGlobalMouseDown);
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [isPainting]);
+
   return (
     <div className="pixel-editor max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="mb-4">
@@ -1045,7 +1350,7 @@ const PixelEditor = ({
             {activeTab === 'editor' && (
               <div className="mb-3">
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-medium text-gray-900 text-sm">Canvas Background</h4>
+                  <h4 className="font-medium text-gray-900 text-sm">Canvas Background (preview)</h4>
                   <div className="inline-flex space-x-1 bg-gray-50 rounded-lg p-1">
                     <button
                       onClick={() => setBackgroundPreview('checkerboard')}
@@ -1107,6 +1412,7 @@ const PixelEditor = ({
                     onMouseMove={handleCanvasMouseMove}
                     onMouseUp={handleCanvasMouseUp}
                     onMouseLeave={handleCanvasMouseLeave}
+                    onMouseEnter={handleCanvasMouseEnter}
                     className="pixel-canvas absolute inset-0"
                     style={{
                       imageRendering: 'pixelated',

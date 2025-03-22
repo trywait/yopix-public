@@ -18,7 +18,19 @@ const AiImageGenerator = ({ onImageSelect, compact = false }) => {
       const userText = prompt.trim();
       
       // Create the enhanced prompt for the API
-      const enhancedPrompt = `Create a colorful app icon of a ${userText}. The style should be extremely simple and bold like an iOS app icon or Material Design icon, with bright cheerful colors. The icon should be large and centered on a pure white background with no border. Use 3-4 solid colors maximum, no gradients or shadows. Make it playful and cute, similar to a modern app icon or emoji design. The shape should be very simple and fill most of the frame.`;
+      const enhancedPrompt = `First, create a solid black (#000000) background that fills the entire image. Then, on this black background, create a vibrant, iconic representation of a ${userText}. This is critical: the background MUST be pure black or very dark (#000000 to #111111), not white or light colored.
+
+The design requirements are:
+- Start with a completely black canvas (#000000)
+- Use bright, neon-like colors for the subject that stand out against black
+- The subject should be composed of distinct, solid-colored shapes
+- Make the subject large and centered, filling 80% of the frame
+- Use chunky, block-like shapes similar to retro video game sprites
+- Keep it extremely simple and geometric - no gradients or shading
+- The design should work well when reduced to 16x16 pixels
+- Avoid any text, borders, or decorative elements
+- Every color used should be high-intensity and pop against the black
+- Think arcade game graphics or neon signs at night`;
 
       const response = await fetch('/api/generate-ai-image', {
         method: 'POST',
@@ -53,7 +65,7 @@ const AiImageGenerator = ({ onImageSelect, compact = false }) => {
       
       // Check if it's a quota/rate limit error
       if (err.message.includes('quota') || err.message.includes('429') || err.message.includes('Too Many Requests')) {
-        setError('Generation Limit Reached. Please use a different image upload method');
+        setError('<strong>Generation Limit Reached.</strong><br/>Please use a different image upload method');
       } else {
         setError('Failed to generate image. Please try again.');
       }
@@ -104,11 +116,14 @@ const AiImageGenerator = ({ onImageSelect, compact = false }) => {
           )}
         </div>
         {error && (
-          <p className="mt-2 text-sm text-red-600">{error}</p>
+          <p 
+            className="mt-2 text-sm text-red-600"
+            dangerouslySetInnerHTML={{ __html: error }}
+          />
         )}
         {generatedImages.length > 0 && (
           <>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="mt-6 grid grid-cols-2 gap-4">
               {generatedImages.map((imageUrl, index) => (
                 <button
                   key={index}
@@ -180,7 +195,7 @@ const AiImageGenerator = ({ onImageSelect, compact = false }) => {
 
         {generatedImages.length > 0 && (
           <>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="mt-6 grid grid-cols-2 gap-4">
               {generatedImages.map((imageUrl, index) => (
                 <button
                   key={index}

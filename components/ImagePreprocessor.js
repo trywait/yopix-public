@@ -635,31 +635,16 @@ const SimpleImagePreprocessor = ({ imageUrl, onProcessed, onError }) => {
                 </div>
                 
                 {/* Crop frame instruction tooltip - moved outside the crop area */}
-                <p className="text-xs text-gray-500 p-2 bg-gray-50 rounded-b-lg border-t border-gray-200 mt-0">
-                  Click and drag to position crop frame
-                </p>
-                
-                {/* Cropped preview - for mobile */}
-                {croppedImageUrl && (
-                  <div className="lg:hidden">
-                    <div 
-                      className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm" 
-                      style={{ 
-                        maxHeight: '200px',
-                        backgroundImage: 'repeating-conic-gradient(#f0f0f0 0% 25%, #ffffff 0% 50%) 50% / 8px 8px',
-                        backgroundColor: '#f9f9f9'
-                      }}
-                    >
-                      <img 
-                        src={croppedImageUrl} 
-                        alt="Cropped" 
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center">
+                    <span className="text-xl mr-2">🎯</span>
+                    <p className="text-sm text-blue-700">
+                      Click and drag to position crop frame
+                    </p>
                   </div>
-                )}
                 </div>
               </div>
+            </div>
 
             {/* Right column - Controls and cropped preview */}
             <div className="lg:w-5/12 flex flex-col">

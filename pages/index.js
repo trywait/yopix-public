@@ -439,10 +439,10 @@ export default function Home() {
         )}
 
         {sourceImage && (
-          <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <div className="bg-white rounded-lg shadow-md p-4 mb-4">
             {console.log('[DEBUG] Render condition - sourceImage:', !!sourceImage, 'isPreprocessing:', isPreprocessing, 'isProcessing:', isProcessing, 'pixelatedImage:', !!pixelatedImage)}
             {isPreprocessing ? (
-              <div className="my-8">
+              <div>
                 {console.log('[DEBUG] Rendering SimpleImagePreprocessor component')}
                 <div className="mb-4">
                   <button
