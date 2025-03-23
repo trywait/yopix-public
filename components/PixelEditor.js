@@ -430,7 +430,6 @@ const PixelEditor = ({
     }
     
     if (isPaintBucket) {
-      // Handle paint bucket...
       const coords = getPixelCoordinates(e);
       if (!coords) return;
       
@@ -448,8 +447,9 @@ const PixelEditor = ({
       // Perform flood fill
       floodFill(coords.x, coords.y, targetColor, selectedColor);
       
-      // Capture history immediately for paint bucket
-      captureHistory();
+      // Instead of capturing history immediately, set painting state to true
+      // This will trigger the global mouse up handler to capture history
+      setIsPainting(true);
       return;
     }
     
