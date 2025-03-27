@@ -8,9 +8,17 @@ YoPix is a web application that converts any image into a true 16×16 pixel art 
 - **Advanced Image Preprocessing**:
   - **Interactive Cropping**: Precisely select the portion of your image to convert
   - **Background Removal**: Isolate subjects from their backgrounds using AI
-  - **Custom Background Colors**: Choose any color for your background after removal
-- **Multiple Upload Options**: Drag & drop, file selection, URL input, or Unsplash search
-- **Unsplash Integration**: Search and use high-quality photos directly from Unsplash
+- **Multiple Image Sources**:
+  - **File Upload**: Drag & drop or file selection
+  - **URL Input**: Direct image URL input
+  - **Unsplash Search**: Browse and use high-quality photos from Unsplash
+  - **Yoto Icons**: Search and use pixel-perfect icons from Yoto Icons
+  - **AI Generation**: Create custom pixel art using Google Gemini 2.0 Flash
+- **Advanced Pixel Editing**:
+  - **Color Palette**: Choose from 2 to 256 colors
+  - **Interactive Editor**: Fine-tune your pixel art with a powerful editor
+  - **Eyedropper Tool**: Pick colors from your image
+  - **Undo/Redo**: Track your changes with history
 - **Client-Side Processing**: All image conversion happens in the browser
 - **Modern, Responsive UI**: Two-column layout for desktop and optimized for mobile
 - **Preview & Download**: View and download your pixel art creations
@@ -27,7 +35,8 @@ YoPix is a web application that converts any image into a true 16×16 pixel art 
 - Node.js 14.x or later
 - npm or yarn
 - Firebase account (for storage and sharing features)
-- Unsplash API key (for Unsplash image search integration)
+- Google AI API key (for AI image generation)
+- Unsplash API key (for image search integration)
 
 ### Installation
 
@@ -50,12 +59,18 @@ YoPix is a web application that converts any image into a true 16×16 pixel art 
    - Create a web app in your Firebase project
    - Copy your Firebase configuration
 
-4. Set up Unsplash:
+4. Set up Google AI:
+   - Create a project in Google Cloud Console
+   - Enable the Gemini API
+   - Create API credentials
+   - Copy your API key
+
+5. Set up Unsplash:
    - Create a developer account at [Unsplash Developers](https://unsplash.com/developers)
    - Create a new application
    - Copy your Access Key
 
-5. Create a `.env.local` file in the root directory with your configuration:
+6. Create a `.env.local` file in the root directory with your configuration:
    ```
    NEXT_PUBLIC_FIREBASE_API_KEY=your-api-key
    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-auth-domain
@@ -65,29 +80,31 @@ YoPix is a web application that converts any image into a true 16×16 pixel art 
    NEXT_PUBLIC_FIREBASE_APP_ID=your-app-id
    NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your-measurement-id
    
+   # Google AI API credentials
+   GOOGLE_AI_API_KEY=your_google_ai_api_key_here
+   
    # Unsplash API credentials
    UNSPLASH_ACCESS_KEY=your_unsplash_access_key_here
    ```
 
-6. Run the development server:
+7. Run the development server:
    ```bash
    npm run dev
    # or
    yarn dev
    ```
 
-7. Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
+8. Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
 
 ## How It Works
 
 YoPix uses a multi-stage process to create high-quality pixel art:
 
-1. **Image Acquisition**: The user can upload an image via drag & drop, file selection, URL, or search Unsplash for high-quality photos.
+1. **Image Acquisition**: The user can upload an image via drag & drop, file selection, URL, search Unsplash for high-quality photos, search Yoto Icons, or generate with AI.
 
 2. **Image Preprocessing**:
    - **Cropping**: Users can interactively select the most important part of their image
    - **Background Removal**: Powered by [@imgly/background-removal](https://github.com/imgly/background-removal), users can isolate subjects
-   - **Background Color**: Users can choose custom colors for removed backgrounds
 
 3. **Pixel Art Conversion**:
    - A canvas element is created with dimensions of 16×16 pixels
@@ -114,7 +131,7 @@ The easiest way to deploy YoPix is to use the [Vercel Platform](https://vercel.c
 
 1. Push your code to a GitHub repository.
 2. Import the project into Vercel.
-3. Add your environment variables (Firebase and Unsplash configuration).
+3. Add your environment variables (Firebase, Google AI, and Unsplash configuration).
 4. Deploy!
 
 ### Firebase Hosting
@@ -150,13 +167,17 @@ You can also deploy to Firebase Hosting:
 
 ## Dependencies & Acknowledgments
 
+- [@google/generative-ai](https://github.com/google/generative-ai) - Google's Generative AI SDK for image generation
 - [@imgly/background-removal](https://github.com/imgly/background-removal) - AI-powered background removal
 - [react-easy-crop](https://github.com/ricardo-ch/react-easy-crop) - Interactive image cropping
+- [react-dropzone](https://github.com/react-dropzone/react-dropzone) - Drag and drop file upload
+- [react-colorful](https://github.com/omgovich/react-colorful) - Color picker component
 - [Pixel It](https://github.com/giventofly/pixelit) - The open-source library that powers the pixel art conversion
 - [Next.js](https://nextjs.org/) - The React framework used for building the UI
 - [Tailwind CSS](https://tailwindcss.com/) - For styling the application
 - [Firebase](https://firebase.google.com/) - For backend services and storage
 - [Unsplash API](https://unsplash.com/developers) - For high-quality, free-to-use images
+- [Yoto Icons](https://www.yotoicons.com/) - For high-quality pixel art icons
 
 ## Contributing
 
@@ -177,6 +198,7 @@ This project uses environment variables for configuration. To set up your local 
 
 2. Fill in your credentials in the `.env.local` file:
    - For Firebase configuration, create a project at [Firebase Console](https://console.firebase.google.com/)
+   - For Google AI API, create a project at [Google Cloud Console](https://console.cloud.google.com/)
    - For Unsplash API, register for a developer account at [Unsplash Developers](https://unsplash.com/developers)
 
-3. Make sure not to commit your `.env.local` file with real credentials to GitHub! # https://github.com/trywait/yopix.git
+3. Make sure not to commit your `.env.local` file with real credentials to GitHub!
