@@ -612,11 +612,43 @@ const PixelEditor = ({
 
   // Modify the handleComplete function to ensure we're using the current canvas state
   const handleComplete = () => {
-    if (!canvasRef.current) return;
+    console.log('[DEBUG] handleComplete called, activeTab:', activeTab);
     
-    // Generate filename based on metadata passed through props
+    // If we're in the original tab, we need to use the stored canvas state
+    if (activeTab === 'original') {
+      console.log('[DEBUG] In original tab, using stored canvas state');
+      if (canvasImageData) {
+        console.log('[DEBUG] Found stored canvas state, generating image');
+        // Create a temporary canvas to generate the image
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = 16;
+        tempCanvas.height = 16;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.putImageData(canvasImageData, 0, 0);
+        const dataUrl = tempCanvas.toDataURL('image/png');
+        generateFilenameAndComplete(dataUrl);
+      } else {
+        console.error('[DEBUG] No stored canvas state available');
+      }
+    } else {
+      // In editor tab, use the current canvas
+      console.log('[DEBUG] In editor tab, using current canvas');
+      if (canvasRef.current) {
+        console.log('[DEBUG] Canvas ref available, capturing image');
+        const dataUrl = canvasRef.current.toDataURL('image/png');
+        generateFilenameAndComplete(dataUrl);
+      } else {
+        console.error('[DEBUG] No canvas reference available');
+      }
+    }
+  };
+
+  // Helper function to generate filename and call onComplete
+  const generateFilenameAndComplete = (dataUrl) => {
+    console.log('[DEBUG] generateFilenameAndComplete called');
     let filename = 'yopix';
     if (metadata) {
+      console.log('[DEBUG] Using metadata for filename:', metadata);
       if (metadata.query) {
         filename += `-${metadata.query.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
       }
@@ -629,11 +661,15 @@ const PixelEditor = ({
     }
     filename += '-edited.png';
     
-    // Get the canvas data URL
-    const dataUrl = canvasRef.current.toDataURL('image/png');
+    console.log('[DEBUG] Generated filename:', filename);
     
     // Call onComplete with the data URL and filename
-    onComplete(dataUrl, filename);
+    if (onComplete) {
+      console.log('[DEBUG] Calling onComplete callback');
+      onComplete(dataUrl, filename);
+    } else {
+      console.error('[DEBUG] No onComplete callback available');
+    }
   };
 
   // Toggle eraser mode
@@ -1269,6 +1305,16 @@ const PixelEditor = ({
     };
   }, [isPainting]);
 
+  // Add effect to track tab changes
+  useEffect(() => {
+    console.log('[DEBUG] Tab changed to:', activeTab);
+  }, [activeTab]);
+
+  // Add effect to track canvas reference changes
+  useEffect(() => {
+    console.log('[DEBUG] Canvas reference updated:', !!canvasRef.current);
+  }, [canvasRef.current]);
+
   return (
     <div className="pixel-editor max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="mb-4">
@@ -1384,14 +1430,22 @@ const PixelEditor = ({
                 </>
               ) : (
                 <div className="relative w-full h-full">
-                  <div className="checkerboard-bg absolute inset-0" style={{
-                    backgroundImage: 'repeating-conic-gradient(#f0f0f0 0% 25%, #ffffff 0% 50%) 50% / 16px 16px'
-                  }}></div>
+                  <div 
+                    className="checkerboard-bg absolute inset-0" 
+                    style={{
+                      backgroundImage: 'linear-gradient(45deg, #e0e0e0 25%, transparent 25%), linear-gradient(-45deg, #e0e0e0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e0e0e0 75%), linear-gradient(-45deg, transparent 75%, #e0e0e0 75%)',
+                      backgroundSize: '16px 16px',
+                      backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0px'
+                    }}
+                  />
                   {originalImageUrl && (
                     <img 
                       src={originalImageUrl} 
                       alt="Original cropped image" 
                       className="relative z-10 w-full h-full object-contain"
+                      style={{
+                        imageRendering: 'pixelated'
+                      }}
                     />
                   )}
                 </div>

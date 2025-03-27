@@ -563,7 +563,7 @@ export default function Home() {
             ) : isEditing ? (
               <PixelEditor
                 pixelatedImageUrl={pixelatedImage.url || pixelatedImage}
-                originalImageUrl={sourceImage}
+                originalImageUrl={preprocessedImage}
                 colorCount={colorCount}
                 metadata={pixelatedImage.metadata}
                 onComplete={(dataUrl, filename) => {
