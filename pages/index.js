@@ -376,6 +376,38 @@ export default function Home() {
     setShowNewImageModal(false);
   };
 
+  const handleDirectPixelEdit = (imageUrl, metadata) => {
+    try {
+      console.log('[DEBUG] handleDirectPixelEdit called with image and metadata:', {
+        imageUrl: imageUrl ? imageUrl.substring(0, 50) + '...' : 'null',
+        metadata
+      });
+      
+      setError(null);
+      setSourceImage(imageUrl);
+      setPreprocessedImage(imageUrl); // Use the same image for preprocessed
+      setPixelatedImage({ url: imageUrl, metadata }); // Pass metadata along with the URL
+      setEditedImage(null);
+      setIsPreprocessing(false);
+      setIsProcessing(false);
+      setIsEditing(true); // Go straight to editing
+      
+      console.log('[DEBUG] State after handleDirectPixelEdit:', { 
+        sourceImage: 'Set',
+        preprocessedImage: 'Set',
+        pixelatedImage: 'Set with metadata',
+        editedImage: null,
+        isPreprocessing: false,
+        isProcessing: false,
+        isEditing: true
+      });
+    } catch (err) {
+      console.error('Error handling direct pixel edit:', err);
+      setError('Failed to process the icon.');
+      setIsEditing(false);
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       <Head>
@@ -434,7 +466,10 @@ export default function Home() {
         {!sourceImage && (
           <div className="bg-white rounded-lg shadow-md p-6 mb-8">
             <h2 className="text-2xl font-bold mb-4 text-gray-800">Choose an Image</h2>
-            <UploadWidget onImageUpload={handleImageUpload} />
+            <UploadWidget 
+              onImageUpload={handleImageUpload} 
+              onDirectPixelEdit={handleDirectPixelEdit}
+            />
           </div>
         )}
 
@@ -527,12 +562,19 @@ export default function Home() {
               </div>
             ) : isEditing ? (
               <PixelEditor
-                pixelatedImageUrl={editedImage || pixelatedImage}
-                originalImageUrl={preprocessedImage}
+                pixelatedImageUrl={pixelatedImage.url || pixelatedImage}
+                originalImageUrl={sourceImage}
                 colorCount={colorCount}
-                onComplete={handleEditingComplete}
-                onCancel={handleEditingCancel}
-                onEditStateChange={handleEditStateChange}
+                metadata={pixelatedImage.metadata}
+                onComplete={(dataUrl, filename) => {
+                  setEditedImage({ dataUrl, filename });
+                  setIsEditing(false);
+                }}
+                onCancel={() => {
+                  setIsEditing(false);
+                  setEditedImage(null);
+                }}
+                onEditStateChange={setHasEditedPixels}
               />
             ) : pixelatedImage || editedImage ? (
               <div>
@@ -639,17 +681,20 @@ export default function Home() {
                     </h3>
                     <ImagePreview 
                       imageUrl={preprocessedImage}
-                      pixelatedImageUrl={editedImage || pixelatedImage} 
+                      pixelatedImageUrl={editedImage ? editedImage.dataUrl : (pixelatedImage.url || pixelatedImage)} 
                       forceOriginal={false}
                     />
                   </div>
                 </div>
                 
                 <div className="flex justify-end">
-                  {console.log('[DEBUG] Rendering DownloadButton with aiPrompt:', aiPrompt)}
                   <DownloadButton
-                    imageUrl={editedImage || pixelatedImage.download}
-                    filename={`yopix-${aiPrompt ? aiPrompt.toLowerCase().replace(/[^a-z0-9]/g, '-') : 'pixel-art'}-${colorCount}colors${editedImage ? '-edited' : ''}.png`}
+                    imageUrl={editedImage ? editedImage.dataUrl : (pixelatedImage.download || pixelatedImage)}
+                    filename={
+                      pixelatedImage.metadata 
+                        ? `yopix-${pixelatedImage.metadata.query.replace(/\s+/g, '+')}-${pixelatedImage.metadata.source}-${pixelatedImage.metadata.author}-edited.png`
+                        : `yopix-${aiPrompt ? aiPrompt.toLowerCase().replace(/[^a-z0-9]/g, '-') : 'pixel-art'}-${colorCount}colors${editedImage ? '-edited' : ''}.png`
+                    }
                     className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2"
                   />
                 </div>

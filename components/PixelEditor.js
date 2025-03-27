@@ -7,7 +7,8 @@ const PixelEditor = ({
   colorCount, // The current color count used for pixelation
   onComplete, // Callback when editing is complete
   onCancel, // Callback to cancel and return to previous step
-  onEditStateChange // Callback to notify parent when edits are made
+  onEditStateChange, // Callback to notify parent when edits are made
+  metadata // Metadata for filename generation
 }) => {
   const [editorCanvas, setEditorCanvas] = useState(null);
   const [colors, setColors] = useState([]); // Extracted color palette
@@ -611,83 +612,28 @@ const PixelEditor = ({
 
   // Modify the handleComplete function to ensure we're using the current canvas state
   const handleComplete = () => {
-    // Create a temporary canvas to handle the save operation
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = 16;
-    tempCanvas.height = 16;
-    const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true, alpha: true });
-    tempCtx.imageSmoothingEnabled = false;
-
-    // Get the current state directly from the canvas if we're in editor mode
-    let currentState;
-    if (activeTab === 'editor' && canvasRef.current && canvasContextRef.current) {
-      currentState = canvasContextRef.current.getImageData(0, 0, canvasRef.current.width, canvasRef.current.height);
-    } else {
-      // Otherwise use the stored state
-      currentState = canvasImageData || 
-        (historyRef.current.length > 0 ? historyRef.current[currentStep] : null);
+    if (!canvasRef.current) return;
+    
+    // Generate filename based on metadata passed through props
+    let filename = 'yopix';
+    if (metadata) {
+      if (metadata.query) {
+        filename += `-${metadata.query.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+      }
+      if (metadata.author) {
+        filename += `-by-${metadata.author.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+      }
+      if (metadata.source) {
+        filename += `-${metadata.source}`;
+      }
     }
-
-    if (currentState) {
-      // Apply the current state to the temporary canvas
-      tempCtx.putImageData(currentState, 0, 0);
-      
-      // Create a scaled-up version for preview
-      const previewCanvas = document.createElement('canvas');
-      const scale = 16;
-      previewCanvas.width = tempCanvas.width * scale;
-      previewCanvas.height = tempCanvas.height * scale;
-      
-      const previewCtx = previewCanvas.getContext('2d');
-      previewCtx.imageSmoothingEnabled = false;
-      
-      // Draw the current state to the preview canvas
-      previewCtx.drawImage(
-        tempCanvas, 
-        0, 0, tempCanvas.width, tempCanvas.height,
-        0, 0, previewCanvas.width, previewCanvas.height
-      );
-      
-      const result = {
-        preview: previewCanvas.toDataURL('image/png'),
-        download: tempCanvas.toDataURL('image/png')
-      };
-      
-      onComplete(result);
-    } else {
-      // If no state is available, use the original pixelated image
-      const img = new Image();
-      img.onload = () => {
-        tempCtx.drawImage(img, 0, 0, 16, 16);
-        
-        // Create preview version
-        const previewCanvas = document.createElement('canvas');
-        const scale = 16;
-        previewCanvas.width = tempCanvas.width * scale;
-        previewCanvas.height = tempCanvas.height * scale;
-        
-        const previewCtx = previewCanvas.getContext('2d');
-        previewCtx.imageSmoothingEnabled = false;
-        
-        previewCtx.drawImage(
-          tempCanvas,
-          0, 0, tempCanvas.width, tempCanvas.height,
-          0, 0, previewCanvas.width, previewCanvas.height
-        );
-        
-        const result = {
-          preview: previewCanvas.toDataURL('image/png'),
-          download: tempCanvas.toDataURL('image/png')
-        };
-        
-        onComplete(result);
-      };
-      
-      const imageSource = typeof pixelatedImageUrl === 'object' ? 
-        pixelatedImageUrl.preview : pixelatedImageUrl;
-      
-      img.src = imageSource;
-    }
+    filename += '-edited.png';
+    
+    // Get the canvas data URL
+    const dataUrl = canvasRef.current.toDataURL('image/png');
+    
+    // Call onComplete with the data URL and filename
+    onComplete(dataUrl, filename);
   };
 
   // Toggle eraser mode

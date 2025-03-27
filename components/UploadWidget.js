@@ -2,12 +2,14 @@ import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import UnsplashSearch from './UnsplashSearch';
 import AiImageGenerator from './AiImageGenerator';
+import YotoIconsSearch from './YotoIconsSearch';
 
-const UploadWidget = ({ onImageUpload }) => {
+const UploadWidget = ({ onImageUpload, onDirectPixelEdit }) => {
   const [imageUrl, setImageUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showUnsplashSearch, setShowUnsplashSearch] = useState(false);
+  const [showYotoIconsSearch, setShowYotoIconsSearch] = useState(false);
   const [showAiInput, setShowAiInput] = useState(false);
   const [attributionInfo, setAttributionInfo] = useState(null);
 
@@ -125,121 +127,143 @@ const UploadWidget = ({ onImageUpload }) => {
     onImageUpload(dataUrl);
   };
 
-  if (showUnsplashSearch) {
-    return (
-      <div className="w-full">
-        <UnsplashSearch 
-          onImageSelect={handleUnsplashImageSelect} 
-          onClose={() => setShowUnsplashSearch(false)} 
-        />
-      </div>
-    );
-  }
+  const handleYotoIconSelect = async (iconData) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Use our proxy-image endpoint to fetch the icon
+      const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(iconData.url)}`;
+      const response = await fetch(proxyUrl);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch icon');
+      }
+      
+      // Convert the response to a data URL
+      const blob = await response.blob();
+      const reader = new FileReader();
+      
+      const dataUrl = await new Promise((resolve, reject) => {
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      
+      setShowYotoIconsSearch(false);
+      
+      // If onDirectPixelEdit is provided, skip the cropping stage
+      if (onDirectPixelEdit) {
+        onDirectPixelEdit(dataUrl, iconData.metadata);
+      } else {
+        onImageUpload(dataUrl, iconData.metadata);
+      }
+    } catch (error) {
+      console.error('Error fetching Yoto icon:', error);
+      setError(error.message || 'An error occurred while fetching the icon');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      <div 
-        {...getRootProps()} 
-        className={`p-6 border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors ${
-          isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400'
-        }`}
-      >
-        <input {...getInputProps()} />
-        {isDragActive ? (
-          <p className="text-blue-500">Drop the image here...</p>
-        ) : (
-          <div>
-            <p className="mb-2 text-gray-800 font-medium">Drag & drop an image here, or click to select</p>
-            <p className="text-sm text-gray-600">Supports JPG, PNG, and static GIF</p>
-          </div>
-        )}
-      </div>
-
-      <div className="mt-4">
-        <p className="text-center text-gray-600 font-medium mb-2">OR</p>
-        <form onSubmit={handleUrlSubmit} className="flex">
-          <input
-            type="text"
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
-            placeholder="Enter image URL"
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800"
-          />
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="px-4 py-2 bg-blue-500 text-white rounded-r-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-blue-300"
-          >
-            {isLoading ? 'Loading...' : 'Upload'}
-          </button>
-        </form>
-      </div>
-
-      <div className="mt-4">
-        <p className="text-center text-gray-600 font-medium mb-2">OR</p>
-        <div className="space-y-2">
-          <button
-            onClick={() => setShowUnsplashSearch(true)}
-            className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 flex items-center justify-center"
-          >
-            <img 
-              src="/icons/magnifying-glass.svg" 
-              alt="Search" 
-              className="w-5 h-5 mr-2 text-gray-700"
-            />
-            Search Unsplash Photos
-          </button>
-
-          {!showAiInput ? (
+    <div className="w-full max-w-2xl mx-auto p-4">
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <button
+              onClick={() => setShowUnsplashSearch(true)}
+              className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              Search Unsplash
+            </button>
+            <button
+              onClick={() => setShowYotoIconsSearch(true)}
+              className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500"
+            >
+              Search Yoto Icons
+            </button>
             <button
               onClick={() => setShowAiInput(true)}
-              className="w-full py-2 px-4 bg-purple-100 hover:bg-purple-200 text-purple-800 font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300 flex items-center justify-center"
+              className="flex-1 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
-              <span className="mr-2">✨</span>
               Generate with AI
             </button>
-          ) : (
-            <div className="flex-1">
-              <AiImageGenerator 
-                onImageSelect={(imageUrl, prompt) => {
-                  setShowAiInput(false);
-                  onImageUpload(imageUrl, prompt);
-                }}
-                compact={true}
-              />
+          </div>
+
+          <div className="relative">
+            <div
+              {...getRootProps()}
+              className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors"
+            >
+              <input {...getInputProps()} />
+              <p className="text-gray-600">
+                Drag and drop an image here, or click to select
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-px bg-gray-300"></div>
+            <span className="text-gray-500">or</span>
+            <div className="flex-1 h-px bg-gray-300"></div>
+          </div>
+
+          <form onSubmit={handleUrlSubmit} className="flex gap-2">
+            <input
+              type="url"
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              placeholder="Enter image URL"
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            >
+              {isLoading ? 'Loading...' : 'Load URL'}
+            </button>
+          </form>
+
+          {error && (
+            <div className="text-red-500 text-sm mt-2">
+              {error}
             </div>
           )}
         </div>
       </div>
 
-      {attributionInfo && (
-        <div className="mt-4 p-3 bg-gray-100 text-gray-700 rounded-lg text-xs">
-          <p>
-            Photo by{' '}
-            <a
-              href={attributionInfo.photographer.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-500 hover:underline"
-            >
-              {attributionInfo.photographer.name}
-            </a>{' '}
-            on{' '}
-            <a
-              href={attributionInfo.unsplashLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-500 hover:underline"
-            >
-              Unsplash
-            </a>
-          </p>
+      {showUnsplashSearch && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <UnsplashSearch
+              onImageSelect={handleUnsplashImageSelect}
+              onClose={() => setShowUnsplashSearch(false)}
+            />
+          </div>
         </div>
       )}
 
-      {error && (
-        <div className="mt-4 p-3 bg-red-100 text-red-700 rounded-lg">
-          {error}
+      {showYotoIconsSearch && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <YotoIconsSearch
+              onIconSelect={handleYotoIconSelect}
+              onClose={() => setShowYotoIconsSearch(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {showAiInput && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full">
+            <AiImageGenerator
+              onImageSelect={onImageUpload}
+              onClose={() => setShowAiInput(false)}
+            />
+          </div>
         </div>
       )}
     </div>

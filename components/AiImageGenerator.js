@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const AiImageGenerator = ({ onImageSelect, compact = false }) => {
+const AiImageGenerator = ({ onImageSelect, onClose, compact = false }) => {
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState(null);
@@ -86,84 +86,83 @@ const AiImageGenerator = ({ onImageSelect, compact = false }) => {
 
   if (compact) {
     return (
-      <form onSubmit={handleSubmit} className="flex-1">
-        <div className="space-y-2">
+      <div className="w-full">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-800">Generate with AI</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="mb-6">
           <div className="flex gap-2">
             <input
               type="text"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Dog, Beach, Pinwheel..."
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-              disabled={isGenerating}
+              placeholder="Describe what you want to generate..."
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <button
               type="submit"
-              disabled={isGenerating || !prompt.trim()}
-              className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-purple-300 text-sm font-medium whitespace-nowrap"
+              disabled={isGenerating}
+              className="px-6 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
             >
-              {isGenerating ? (
-                <div className="flex items-center">
-                  <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full"></div>
-                  Generating...
-                </div>
-              ) : (
-                generatedImages.length > 0 ? 'Regenerate' : 'Generate'
-              )}
+              {isGenerating ? 'Generating...' : 'Generate'}
             </button>
           </div>
-          {generatedImages.length === 0 && (
-            <p className="text-xs text-gray-600 text-center italic">Keep it simple, and we'll handle the rest</p>
-          )}
-        </div>
+        </form>
+
         {error && (
-          <p 
-            className="mt-2 text-sm text-red-600"
-            dangerouslySetInnerHTML={{ __html: error }}
-          />
+          <div className="text-red-500 mb-4">
+            {error}
+          </div>
         )}
-        {generatedImages.length > 0 && (
-          <>
-            <div className="mt-6 grid grid-cols-2 gap-4">
-              {generatedImages.map((imageUrl, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleImageSelect(imageUrl)}
-                  className="relative aspect-square overflow-hidden rounded-lg border-2 border-transparent hover:border-purple-500 focus:outline-none focus:border-purple-500 bg-gray-50 group"
-                >
-                  <img
-                    src={imageUrl}
-                    alt={`Generated option ${index + 1}`}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      console.error('Image failed to load:', imageUrl);
-                      e.target.style.display = 'none';
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-purple-500 bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
-                    <span className="text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-lg drop-shadow-md">
-                      Use
-                    </span>
-                  </div>
-                </button>
-              ))}
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          {generatedImages.map((imageUrl, index) => (
+            <div
+              key={index}
+              className="aspect-square relative rounded-lg overflow-hidden border border-gray-200 hover:border-purple-500 transition-colors cursor-pointer"
+              onClick={() => handleImageSelect(imageUrl)}
+            >
+              <img
+                src={imageUrl}
+                alt={`Generated image ${index + 1}`}
+                className="w-full h-full object-contain p-2"
+              />
             </div>
-            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center">
-                <span className="text-xl mr-2">👾</span>
-                <p className="text-sm text-blue-700">
-                  These are not the final images. Your selection will be converted into a much simpler, true 16x16 pixel art
-                </p>
-              </div>
-            </div>
-          </>
+          ))}
+        </div>
+
+        {!isGenerating && generatedImages.length === 0 && (
+          <div className="text-center text-gray-500 mt-8">
+            Enter a prompt and click Generate to create images
+          </div>
         )}
-      </form>
+      </div>
     );
   }
 
   return (
     <div className="w-full max-w-2xl mx-auto p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-800">Generate with AI</h2>
+        <button
+          onClick={onClose}
+          className="text-gray-500 hover:text-gray-700"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="prompt" className="block text-sm font-medium text-gray-700 mb-1">
