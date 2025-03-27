@@ -8,7 +8,8 @@ const PixelEditor = ({
   onComplete, // Callback when editing is complete
   onCancel, // Callback to cancel and return to previous step
   onEditStateChange, // Callback to notify parent when edits are made
-  metadata // Metadata for filename generation
+  metadata, // Metadata for filename generation
+  editedImageUrl = null // Add this new prop to receive the edited image URL
 }) => {
   const [editorCanvas, setEditorCanvas] = useState(null);
   const [colors, setColors] = useState([]); // Extracted color palette
@@ -63,67 +64,49 @@ const PixelEditor = ({
 
   // Initialize the editor with the pixelated image
   useEffect(() => {
-    if (!pixelatedImageUrl || !canvasRef.current) return;
+    if (!canvasRef.current) return;
     
-    // Load the pixelated image
+    // Load the appropriate image
     const img = new Image();
     img.onload = () => {
       // Set up the editor canvas
       setupCanvas(img);
     };
     
-    // Get the appropriate URL (preview or direct)
-    const imageSource = typeof pixelatedImageUrl === 'object' ? 
-      pixelatedImageUrl.preview : pixelatedImageUrl;
+    // Use edited image if available, otherwise use pixelated image
+    const imageSource = editedImageUrl || (typeof pixelatedImageUrl === 'object' ? 
+      pixelatedImageUrl.preview : pixelatedImageUrl);
     
     img.src = imageSource;
-  }, [pixelatedImageUrl]);
+  }, [pixelatedImageUrl, editedImageUrl]);
 
-  // Add effect to reinitialize canvas when switching back to editor
+  // Modify the tab switching logic to also respect edited image
   useEffect(() => {
-    if (activeTab === 'editor' && canvasRef.current && pixelatedImageUrl) {
+    if (activeTab === 'editor' && canvasRef.current && (pixelatedImageUrl || editedImageUrl)) {
       const img = new Image();
       img.onload = () => {
+        if (!canvasRef.current) return;
+        
         const ctx = canvasRef.current.getContext('2d', { willReadFrequently: true, alpha: true });
+        canvasContextRef.current = ctx;
         
-        // Set canvas dimensions and disable smoothing
-        canvasRef.current.width = 16;
-        canvasRef.current.height = 16;
-        ctx.imageSmoothingEnabled = false;
-        
-        // Clear canvas first
-        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-        
-        try {
-          // If we have history and the current step is valid
-          if (historyRef.current.length > 0 && currentStep >= 0 && currentStep < historyRef.current.length) {
-            const historyState = historyRef.current[currentStep];
-            // Verify the ImageData is valid
-            if (historyState && historyState.data && historyState.width === 16 && historyState.height === 16) {
-              ctx.putImageData(historyState, 0, 0);
-            } else {
-              // If history state is invalid, draw from the image
-              ctx.drawImage(img, 0, 0, 16, 16);
-              // Reinitialize history with the current state
-              const initialState = ctx.getImageData(0, 0, 16, 16);
-              historyRef.current = [initialState];
-              currentStepRef.current = 0;
-              setCurrentStep(0);
-            }
-          } else {
-            // No valid history, draw from the image
+        // Try to restore the last canvas state first
+        if (canvasImageData) {
+          try {
+            ctx.putImageData(canvasImageData, 0, 0);
+          } catch (error) {
+            console.error("Error restoring canvas state:", error);
+            // Fallback to drawing from the image
             ctx.drawImage(img, 0, 0, 16, 16);
-            // Initialize history with the current state
+            // Reinitialize history
             const initialState = ctx.getImageData(0, 0, 16, 16);
             historyRef.current = [initialState];
             currentStepRef.current = 0;
             setCurrentStep(0);
           }
-        } catch (error) {
-          console.error("Error restoring canvas state:", error);
-          // Fallback to drawing from the image
+        } else {
+          // No saved state, draw the image directly
           ctx.drawImage(img, 0, 0, 16, 16);
-          // Reinitialize history
           const initialState = ctx.getImageData(0, 0, 16, 16);
           historyRef.current = [initialState];
           currentStepRef.current = 0;
@@ -131,12 +114,13 @@ const PixelEditor = ({
         }
       };
       
-      const imageSource = typeof pixelatedImageUrl === 'object' ? 
-        pixelatedImageUrl.preview : pixelatedImageUrl;
+      // Use edited image if available, otherwise use pixelated image
+      const imageSource = editedImageUrl || (typeof pixelatedImageUrl === 'object' ? 
+        pixelatedImageUrl.preview : pixelatedImageUrl);
       
       img.src = imageSource;
     }
-  }, [activeTab, pixelatedImageUrl, currentStep]);
+  }, [activeTab, pixelatedImageUrl, editedImageUrl, currentStep]);
 
   // Notify parent component when edit state changes
   useEffect(() => {
@@ -1114,8 +1098,9 @@ const PixelEditor = ({
         });
       };
       
-      const imageSource = typeof pixelatedImageUrl === 'object' ? 
-        pixelatedImageUrl.preview : pixelatedImageUrl;
+      // Use edited image if available, otherwise use pixelated image
+      const imageSource = editedImageUrl || (typeof pixelatedImageUrl === 'object' ? 
+        pixelatedImageUrl.preview : pixelatedImageUrl);
       
       img.src = imageSource;
     }

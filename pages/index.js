@@ -566,6 +566,7 @@ export default function Home() {
                 originalImageUrl={preprocessedImage}
                 colorCount={colorCount}
                 metadata={pixelatedImage.metadata}
+                editedImageUrl={editedImage?.dataUrl}
                 onComplete={(dataUrl, filename) => {
                   setEditedImage({ dataUrl, filename });
                   setIsEditing(false);
