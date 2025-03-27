@@ -571,10 +571,7 @@ export default function Home() {
                   setEditedImage({ dataUrl, filename });
                   setIsEditing(false);
                 }}
-                onCancel={() => {
-                  setIsEditing(false);
-                  setEditedImage(null);
-                }}
+                onCancel={() => setIsEditing(false)}
                 onEditStateChange={setHasEditedPixels}
               />
             ) : pixelatedImage || editedImage ? (
