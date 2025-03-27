@@ -200,10 +200,23 @@ const PixelEditor = ({
     ctx.drawImage(img, 0, 0, 16, 16);
     
     // Extract the color palette
-    const colors = extractColorsFromCanvas(canvas);
-    setColors(colors);
-    setSelectedColor(colors[0]);
-    setCustomColor(colors[0].hex);
+    const extractedColors = extractColorsFromCanvas(canvas);
+    
+    // Add transparent color at the start of the palette
+    const transparentColor = {
+      r: 0,
+      g: 0,
+      b: 0,
+      a: 0,
+      rgba: 'rgba(0,0,0,0)',
+      hex: 'transparent'
+    };
+    
+    // Combine transparent color with extracted colors
+    const allColors = [transparentColor, ...extractedColors];
+    setColors(allColors);
+    setSelectedColor(allColors[0]);
+    setCustomColor(allColors[0].hex);
     
     // Initialize history with the current state
     const initialState = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -1577,13 +1590,16 @@ const PixelEditor = ({
                     key={index}
                     className={`w-8 h-8 rounded-sm ${selectedColor === color ? 'ring-1 ring-blue-500' : 'border border-gray-200'}`}
                     style={{ 
-                      backgroundColor: color.rgba, 
-                      backgroundImage: color.a < 255 
-                        ? 'repeating-conic-gradient(#f0f0f0 0% 25%, #ffffff 0% 50%) 50% / 4px 4px' 
-                        : 'none'
+                      backgroundColor: color.rgba,
+                      backgroundImage: color.a === 0 || color.a < 255
+                        ? 'linear-gradient(45deg, #e0e0e0 25%, transparent 25%), linear-gradient(-45deg, #e0e0e0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e0e0e0 75%), linear-gradient(-45deg, transparent 75%, #e0e0e0 75%)'
+                        : 'none',
+                      backgroundSize: '8px 8px',
+                      backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px'
                     }}
                     onClick={() => {
                       setSelectedColor(color);
+                      setCustomColor(color.hex);
                       if (!isBrush && !isEyedropper && !isPaintBucket) {
                         setIsBrush(true);
                       }
@@ -1617,7 +1633,7 @@ const PixelEditor = ({
               if (match) {
                 const [_, r, g, b, a = "1"] = match;
                 const alpha = Math.round(parseFloat(a) * 255);
-                const hex = rgbToHex(parseInt(r), parseInt(g), parseInt(b));
+                const hex = alpha === 0 ? 'transparent' : rgbToHex(parseInt(r), parseInt(g), parseInt(b));
                 
                 const tempColor = {
                   r: parseInt(r),
