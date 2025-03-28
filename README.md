@@ -158,6 +158,7 @@ The easiest way to deploy YoPix is to use the [Vercel Platform](https://vercel.c
 - [Pixel It](https://github.com/giventofly/pixelit) - The open-source library that powers the pixel art conversion
 - [Next.js](https://nextjs.org/) - The React framework used for building the UI
 - [Tailwind CSS](https://tailwindcss.com/) - For styling the application
+- [express-rate-limit](https://github.com/express-rate-limit/express-rate-limit) - Rate limiting middleware
 - [Unsplash API](https://unsplash.com/developers) - For high-quality, free-to-use images
 - [Yoto Icons](https://www.yotoicons.com/) - For high-quality pixel art icons
 
@@ -178,58 +179,77 @@ This project uses environment variables for configuration. To set up your local 
    cp .env.local.example .env.local
    ```
 
-2. Fill in your credentials in the `.env.local` file:
-   - For Google AI API, create a project at [Google Cloud Console](https://console.cloud.google.com/)
-   - For Unsplash API, register for a developer account at [Unsplash Developers](https://unsplash.com/developers)
+2. Configure your environment variables:
+   ```bash
+   # Required API Keys
+   GOOGLE_AI_API_KEY=your_google_ai_api_key_here
+   UNSPLASH_ACCESS_KEY=your_unsplash_access_key_here
 
-3. Make sure not to commit your `.env.local` file with real credentials to GitHub! See [GitHub's documentation](https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files) for more information about ignoring files.
+   # Optional Configuration
+   # See .env.local.example for all available options
+   ```
+
+3. Security Best Practices:
+   - Never commit `.env.local` to version control
+   - Use secure secrets management in production
+   - Follow the principle of least privilege for API keys
+   - Implement appropriate rate limiting for your use case
+
+### Security Features
+
+The application implements several security measures:
+
+1. **Rate Limiting**:
+   - Configurable request limits
+   - Protection against abuse
+   - Development mode options
+
+2. **Input Validation**:
+   - URL and file validation
+   - Content type verification
+   - Size restrictions
+
+3. **Resource Protection**:
+   - Request timeouts
+   - File size limits
+   - Response caching
+   - Error handling
+
+4. **Security Headers**:
+   - Industry-standard security headers
+   - CORS protection
+   - Cache control
 
 ### AI Image Generation
 
-The application includes built-in prompt enhancement for AI image generation. When using the AI generation feature:
+The application includes built-in prompt enhancement for AI image generation:
 
-1. **Input Requirements**:
-   - Use simple, clear descriptions (e.g., "dog", "happy cat", "red car")
-   - Only alphanumeric characters and basic punctuation are allowed (.,!?-_())
-   - Maximum prompt length: 500 characters
+1. **Input Guidelines**:
+   - Use clear, simple descriptions
+   - Follow standard text input practices
+   - Keep prompts concise
 
 2. **Automatic Enhancement**:
-   The application automatically enhances your prompt to generate pixel art by adding:
-   - Specific pixel art style requirements
-   - Size and composition guidelines
-   - Color and contrast specifications
-   - Retro gaming aesthetic requirements
+   The application automatically optimizes prompts for pixel art generation with:
+   - Style requirements
+   - Composition guidelines
+   - Aesthetic specifications
 
 3. **Multiple Variations**:
-   - Each prompt generates multiple variations
-   - Select your preferred version to convert to 16×16 pixel art
+   - Generate multiple options
+   - Select preferred version
+   - Convert to 16×16 pixel art
 
-4. **Customizing the Prompt Template**:
-   You can customize how your prompts are enhanced by modifying the `enhancePrompt` function in `pages/api/generate-ai-image.js`:
-   ```javascript
-   const enhancePrompt = (userPrompt) => {
-     return `Create a 1:1 pixel art icon of a ${userPrompt} on a black background, with these strict requirements:
-     - Always output a square image on a black background.
-     - Orient the ${userPrompt} in a way that it is large and takes up the majority of the image frame.
-     // ... modify or add your requirements here ...
-     `;
-   };
-   ```
-   Common customizations include:
-   - Changing the background color (e.g., from black to white)
-   - Adjusting the size and positioning requirements
-   - Modifying the color palette guidelines
-   - Adding specific style requirements (e.g., "cyberpunk", "minimalist", etc.)
-   
-   ⚠️ **Note**: When customizing the prompt template:
-   - Keep the requirements clear and specific
-   - Maintain consistency with pixel art aesthetics
-   - Test your changes with various inputs
-   - Remember that the final output will be converted to 16×16 pixels
+4. **Customization**:
+   The prompt enhancement can be customized through environment variables.
+   See `.env.local.example` for available options.
 
-### Rate Limiting Configuration
+### Development Mode
 
-The application includes rate limiting to prevent abuse of the API endpoints. You can configure the rate limiting behavior using the following environment variables:
+For local development:
+1. Copy `.env.local.example` to `.env.local`
+2. Configure your development settings
+3. Refer to the example file for available options
 
 ```bash
 # Rate limiting configuration
