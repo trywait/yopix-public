@@ -14,23 +14,18 @@ const ImagePreview = ({
   // Reset error state when image URL changes
   useEffect(() => {
     setImageError(false);
-    console.log('ImagePreview: Image URL changed', 
-      forceOriginal ? 'Original' : 'Pixelated', 
-      effectiveImageUrl ? effectiveImageUrl.substring(0, 50) + '...' : 'null'
-    );
+    console.log('[DEBUG] Image preview updated:', forceOriginal ? 'Original' : 'Pixelated');
   }, [imageUrl, pixelatedImageUrl, forceOriginal, effectiveImageUrl]);
 
   // Handle image load error
   const handleImageError = () => {
-    console.error('Failed to load image:', effectiveImageUrl);
+    console.error('[DEBUG] Failed to load image in preview');
     setImageError(true);
   };
 
   // Handle image load success
   const handleImageLoad = () => {
-    console.log('Image loaded successfully:', 
-      forceOriginal ? 'Original' : 'Pixelated'
-    );
+    console.log('[DEBUG] Image loaded in preview:', forceOriginal ? 'Original' : 'Pixelated');
   };
 
   return (

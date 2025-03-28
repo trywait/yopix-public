@@ -596,13 +596,11 @@ const PixelEditor = ({
 
   // Modify the handleComplete function to ensure we're using the current canvas state
   const handleComplete = () => {
-    console.log('[DEBUG] handleComplete called, activeTab:', activeTab);
+    console.log('[DEBUG] Completing pixel edit');
     
     // If we're in the original tab, we need to use the stored canvas state
     if (activeTab === 'original') {
-      console.log('[DEBUG] In original tab, using stored canvas state');
       if (canvasImageData) {
-        console.log('[DEBUG] Found stored canvas state, generating image');
         // Create a temporary canvas to generate the image
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = 16;
@@ -616,9 +614,7 @@ const PixelEditor = ({
       }
     } else {
       // In editor tab, use the current canvas
-      console.log('[DEBUG] In editor tab, using current canvas');
       if (canvasRef.current) {
-        console.log('[DEBUG] Canvas ref available, capturing image');
         const dataUrl = canvasRef.current.toDataURL('image/png');
         generateFilenameAndComplete(dataUrl);
       } else {
@@ -629,10 +625,8 @@ const PixelEditor = ({
 
   // Helper function to generate filename and call onComplete
   const generateFilenameAndComplete = (dataUrl) => {
-    console.log('[DEBUG] generateFilenameAndComplete called');
     let filename = 'yopix';
     if (metadata) {
-      console.log('[DEBUG] Using metadata for filename:', metadata);
       if (metadata.query) {
         filename += `-${metadata.query.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
       }
@@ -645,11 +639,8 @@ const PixelEditor = ({
     }
     filename += '-edited.png';
     
-    console.log('[DEBUG] Generated filename:', filename);
-    
     // Call onComplete with the data URL and filename
     if (onComplete) {
-      console.log('[DEBUG] Calling onComplete callback');
       onComplete(dataUrl, filename);
     } else {
       console.error('[DEBUG] No onComplete callback available');
@@ -1292,12 +1283,12 @@ const PixelEditor = ({
 
   // Add effect to track tab changes
   useEffect(() => {
-    console.log('[DEBUG] Tab changed to:', activeTab);
+    console.log('[DEBUG] Editor tab changed:', activeTab);
   }, [activeTab]);
 
   // Add effect to track canvas reference changes
   useEffect(() => {
-    console.log('[DEBUG] Canvas reference updated:', !!canvasRef.current);
+    console.log('[DEBUG] Canvas reference updated');
   }, [canvasRef.current]);
 
   return (
@@ -1585,11 +1576,13 @@ const PixelEditor = ({
                     onClick={() => {
                       setSelectedColor(color);
                       setCustomColor(color.hex);
-                      // Disable eraser and other tools, enable brush
-                      setIsEraser(false);
-                      setIsEyedropper(false);
-                      setIsPaintBucket(false);
-                      setIsBrush(true);
+                      // Only change tools if not using paint bucket
+                      if (!isPaintBucket) {
+                        setIsEraser(false);
+                        setIsEyedropper(false);
+                        setIsPaintBucket(false);
+                        setIsBrush(true);
+                      }
                     }}
                     title={color.hex}
                   />

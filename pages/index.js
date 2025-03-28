@@ -9,9 +9,11 @@ import SimpleImagePreprocessor from '../components/image/ImagePreprocessor';
 import Loader from '../components/ui/Loader';
 import PixelEditor from '../components/editor/PixelEditor';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
+import HowItWorks from '../components/ui/HowItWorks';
 import { removeBackground } from '@imgly/background-removal';
 
 export default function Home() {
+  // State management for the image processing pipeline
   const [sourceImage, setSourceImage] = useState(null);
   const [preprocessedImage, setPreprocessedImage] = useState(null);
   const [pixelatedImage, setPixelatedImage] = useState(null);
@@ -28,11 +30,13 @@ export default function Home() {
   const [showNewImageModal, setShowNewImageModal] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
 
+  // Utility function to add debug messages with timestamps
   const addDebugMessage = (message) => {
     console.log(message);
     setDebug(prev => [...prev, `${new Date().toLocaleTimeString()}: ${message}`]);
   };
 
+  // Check if the background removal library is properly loaded
   useEffect(() => {
     try {
       addDebugMessage('🔍 Checking if removeBackground function exists...');
@@ -48,15 +52,15 @@ export default function Home() {
     }
   }, []);
 
+  /**
+   * Handles the initial image upload and sets up the processing pipeline
+   * @param {string} imageUrl - The URL of the uploaded image
+   * @param {string} prompt - Optional AI prompt for image generation
+   */
   const handleImageUpload = (imageUrl, prompt = '') => {
     try {
-      console.log('[DEBUG] handleImageUpload called with image', imageUrl ? imageUrl.substring(0, 50) + '...' : 'null');
-      console.log('[DEBUG] Prompt received:', prompt, 'Length:', prompt.length);
-      
-      // Ensure prompt is properly trimmed and set
+      console.log('[DEBUG] Processing new image upload');
       const cleanPrompt = prompt.trim();
-      console.log('[DEBUG] Clean prompt:', cleanPrompt, 'Length:', cleanPrompt.length);
-      
       setError(null);
       setSourceImage(imageUrl);
       setPreprocessedImage(null);
@@ -64,17 +68,7 @@ export default function Home() {
       setEditedImage(null);
       setIsPreprocessing(true);
       setIsProcessing(false);
-      setAiPrompt(cleanPrompt); // Use the cleaned prompt
-      
-      console.log('[DEBUG] State after handleImageUpload:', { 
-        sourceImage: 'Set',
-        preprocessedImage: null,
-        pixelatedImage: null,
-        editedImage: null,
-        isPreprocessing: true,
-        isProcessing: false,
-        aiPrompt: cleanPrompt
-      });
+      setAiPrompt(cleanPrompt);
     } catch (err) {
       console.error('Error handling image upload:', err);
       setError('Failed to process the uploaded image.');
@@ -83,32 +77,18 @@ export default function Home() {
     }
   };
 
+  /**
+   * Handles completion of the image preprocessing stage
+   * @param {string} processedImage - URL of the preprocessed image
+   */
   const handlePreprocessingComplete = (processedImage) => {
     try {
-      console.log('Preprocessing complete, processed image:', processedImage ? processedImage.substring(0, 50) + '...' : 'null');
-      console.log('[DEBUG] Current aiPrompt:', aiPrompt); // Add debug log
+      console.log('[DEBUG] Image preprocessing completed');
       setPreprocessedImage(processedImage);
       setIsPreprocessing(false);
       setIsProcessing(true);
-      
-      // Clear any edited image when returning from cropping
-      if (editedImage) {
-        console.log('Clearing previous edited image');
-        setEditedImage(null);
-      }
-      
-      // Clear edit state flag
+      setEditedImage(null);
       setHasEditedPixels(false);
-      
-      // Analytics
-      console.log('State change:', {
-        sourceImage: 'Set',
-        preprocessedImage: 'Set',
-        pixelatedImage: null,
-        isPreprocessing: false,
-        isProcessing: true,
-        aiPrompt // Add to debug output
-      });
     } catch (err) {
       console.error('Error completing preprocessing:', err);
       setError('Failed to complete image preprocessing.');
@@ -117,13 +97,13 @@ export default function Home() {
     }
   };
 
+  /**
+   * Handles completion of the pixel art processing stage
+   * @param {Object} result - The processed pixel art result
+   */
   const handleProcessingComplete = (result) => {
     try {
-      console.log('Received pixelated image URLs:', 
-        result.preview ? result.preview.substring(0, 100) + '...' : 'null',
-        result.download ? result.download.substring(0, 100) + '...' : 'null'
-      );
-      console.log('[DEBUG] Current aiPrompt:', aiPrompt); // Add debug log
+      console.log('[DEBUG] Pixel art processing completed');
       setPixelatedImage(result);
       setIsProcessing(false);
     } catch (err) {
@@ -133,9 +113,11 @@ export default function Home() {
     }
   };
 
+  /**
+   * Resets the application state to its initial values
+   */
   const handleReset = () => {
     try {
-      // Clear all state
       setSourceImage(null);
       setPreprocessedImage(null);
       setPixelatedImage(null);
@@ -143,60 +125,52 @@ export default function Home() {
       setIsPreprocessing(false);
       setIsProcessing(false);
       setError(null);
-      setAiPrompt(''); // Clear aiPrompt when resetting
-      
-      // Clear session storage
+      setAiPrompt('');
       sessionStorage.removeItem('yopix_crop_settings');
-      
-      console.log("Application reset complete");
+      console.log("[DEBUG] Application reset complete");
     } catch (err) {
       console.error('Error resetting state:', err);
-      // If reset fails, try a more aggressive reset
       sessionStorage.clear();
       window.location.reload();
     }
   };
 
+  /**
+   * Handles navigation back to the cropping stage
+   * Shows confirmation modal if there are unsaved edits
+   */
   const handleBackToCropping = () => {
-    console.log('[DEBUG] Current aiPrompt before back to cropping:', aiPrompt); // Add debug log
-    // If user has made edits, show confirmation modal first
+    console.log('[DEBUG] Current aiPrompt before back to cropping:', aiPrompt);
     if (hasEditedPixels) {
       setShowConfirmModal(true);
       return;
     }
-    
-    // Otherwise proceed directly
     proceedToBackToCropping();
   };
   
+  /**
+   * Executes the back to cropping navigation after confirmation
+   */
   const proceedToBackToCropping = () => {
-    console.log('[DEBUG] Current aiPrompt in proceedToBackToCropping:', aiPrompt); // Add debug log
-    // First clear any errors
+    console.log('[DEBUG] Current aiPrompt in proceedToBackToCropping:', aiPrompt);
     setError(null);
-    
-    // Clear the pixelated image and edited image
     setPixelatedImage(null);
     setEditedImage(null);
-    
-    // Reset edit state flag
     setHasEditedPixels(false);
-    
-    // Ensure we're not in processing state
     setIsProcessing(false);
-    
-    // Set preprocessing to true to show the ImagePreprocessor component
     setIsPreprocessing(true);
-    
-    // Close the confirmation modal
     setShowConfirmModal(false);
-    
-    console.log("Navigating back to cropping stage...");
+    console.log("[DEBUG] Navigating back to cropping stage...");
   };
   
   const handleCancelBackToCropping = () => {
     setShowConfirmModal(false);
   };
 
+  /**
+   * Handles errors during the image processing pipeline
+   * @param {string} errorMessage - The error message to display
+   */
   const handleProcessingError = (errorMessage) => {
     console.error('Processing error:', errorMessage);
     setError(errorMessage);
@@ -204,23 +178,33 @@ export default function Home() {
     setIsProcessing(false);
   };
 
+  /**
+   * Updates the color count for pixel art generation
+   * @param {Event} e - The change event from the color count input
+   */
   const handleColorCountChange = (e) => {
     const count = parseInt(e.target.value, 10);
     setColorCount(count);
   };
 
+  /**
+   * Updates the color count using a preset value
+   * @param {number} count - The preset color count to use
+   */
   const handleColorCountPreset = (count) => {
-    console.log(`Setting color count to ${count}`);
+    console.log(`[DEBUG] Setting color count to ${count}`);
     setColorCount(count);
-    
-    // If we already have a pixelated image, set it to null to trigger reprocessing
     if (preprocessedImage) {
-      console.log('Triggering reprocessing with new color count');
+      console.log('[DEBUG] Triggering reprocessing with new color count');
       setPixelatedImage(null);
       setIsProcessing(true);
     }
   };
 
+  /**
+   * Handles direct file input changes
+   * @param {Event} e - The change event from the file input
+   */
   const handleImageChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -235,6 +219,9 @@ export default function Home() {
     }
   };
 
+  /**
+   * Removes the background from the source image using AI
+   */
   const handleRemoveBackground = async () => {
     if (!sourceImage) {
       addDebugMessage('No image selected');
@@ -266,34 +253,27 @@ export default function Home() {
       
       addDebugMessage(`Image converted to blob: ${Math.round(blob.size / 1024)} KB`);
 
+      // Configure background removal with local WASM files and proxy for model loading
       const config = {
         debug: true,
         progress: (progress) => {
           addDebugMessage(`Progress: ${Math.round(progress * 100)}%`);
         },
-        // Use local WASM files from our public/models directory
         wasmPaths: {
           'ort-wasm.wasm': '/models/ort-wasm.wasm',
           'ort-wasm-simd.wasm': '/models/ort-wasm-simd.wasm',
           'ort-wasm-threaded.wasm': '/models/ort-wasm-threaded.wasm',
           'ort-wasm-simd-threaded.wasm': '/models/ort-wasm-simd-threaded.wasm'
         },
-        // Important: We skip the SSL verification for the model.onnx file
-        // by using our proxy API route
         fetchModelData: async (modelUrl) => {
           addDebugMessage(`Fetching model from: ${modelUrl}`);
-          
           try {
-            // Instead of using the default model URL, we'll use a proxy
             const response = await fetch('/api/proxy-model?url=' + encodeURIComponent(modelUrl));
-            
             if (!response.ok) {
               throw new Error(`Failed to fetch model: ${response.status} ${response.statusText}`);
             }
-            
             const arrayBuffer = await response.arrayBuffer();
             addDebugMessage(`Model data loaded: ${Math.round(arrayBuffer.byteLength / (1024 * 1024))} MB`);
-            
             return new Uint8Array(arrayBuffer);
           } catch (error) {
             addDebugMessage(`Error fetching model: ${error.message}`);
@@ -329,6 +309,11 @@ export default function Home() {
     }
   };
 
+  /**
+   * Utility function to load an image from a URL
+   * @param {string} src - The URL of the image to load
+   * @returns {Promise<HTMLImageElement>} The loaded image element
+   */
   const loadImage = (src) => {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -339,10 +324,17 @@ export default function Home() {
     });
   };
 
+  /**
+   * Initiates the pixel editing mode
+   */
   const handleStartEditing = () => {
     setIsEditing(true);
   };
 
+  /**
+   * Handles completion of pixel editing
+   * @param {Object} result - The edited image result
+   */
   const handleEditingComplete = (result) => {
     setEditedImage(result);
     setIsEditing(false);
@@ -352,18 +344,23 @@ export default function Home() {
     setIsEditing(false);
   };
   
+  /**
+   * Updates the edit state flag when pixels are modified
+   * @param {boolean} hasEdits - Whether there are unsaved edits
+   */
   const handleEditStateChange = (hasEdits) => {
     setHasEditedPixels(hasEdits);
   };
 
-  // Handle new image button click
+  /**
+   * Handles the new image button click
+   * Shows confirmation modal if there are unsaved changes
+   */
   const handleNewImageClick = () => {
-    // If there's an image and edits, show confirmation
     if (sourceImage || preprocessedImage || pixelatedImage || editedImage) {
       setShowNewImageModal(true);
       return;
     }
-    // Otherwise proceed directly
     proceedToNewImage();
   };
   
@@ -376,31 +373,22 @@ export default function Home() {
     setShowNewImageModal(false);
   };
 
+  /**
+   * Handles direct pixel editing of an existing image
+   * @param {string} imageUrl - The URL of the image to edit
+   * @param {Object} metadata - Additional metadata about the image
+   */
   const handleDirectPixelEdit = (imageUrl, metadata) => {
     try {
-      console.log('[DEBUG] handleDirectPixelEdit called with image and metadata:', {
-        imageUrl: imageUrl ? imageUrl.substring(0, 50) + '...' : 'null',
-        metadata
-      });
-      
+      console.log('[DEBUG] Starting direct pixel edit');
       setError(null);
       setSourceImage(imageUrl);
-      setPreprocessedImage(imageUrl); // Use the same image for preprocessed
-      setPixelatedImage({ url: imageUrl, metadata }); // Pass metadata along with the URL
+      setPreprocessedImage(imageUrl);
+      setPixelatedImage({ url: imageUrl, metadata });
       setEditedImage(null);
       setIsPreprocessing(false);
       setIsProcessing(false);
-      setIsEditing(true); // Go straight to editing
-      
-      console.log('[DEBUG] State after handleDirectPixelEdit:', { 
-        sourceImage: 'Set',
-        preprocessedImage: 'Set',
-        pixelatedImage: 'Set with metadata',
-        editedImage: null,
-        isPreprocessing: false,
-        isProcessing: false,
-        isEditing: true
-      });
+      setIsEditing(true);
     } catch (err) {
       console.error('Error handling direct pixel edit:', err);
       setError('Failed to process the icon.');
@@ -713,27 +701,7 @@ export default function Home() {
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-2xl font-bold mb-4 text-gray-800">How It Works</h2>
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-700">1. Upload or Search for an Image</h3>
-              <p className="text-gray-600">Start by uploading or browsing for any image you'd like to convert to pixel art.</p>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-700">2. Crop and Remove Background</h3>
-              <p className="text-gray-600">Optimize your image for better results.</p>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-700">3. Pixel Art Generation</h3>
-              <p className="text-gray-600">Your image is processed into a pixel art style with optimized colors.</p>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-700">4. Download & Share</h3>
-              <p className="text-gray-600">Download your pixel art and share it with friends or use it in your projects!</p>
-            </div>
-          </div>
-        </div>
+        <HowItWorks />
       </main>
 
       <footer className="bg-gray-100 py-6 w-full mt-auto">

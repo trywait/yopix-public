@@ -168,8 +168,8 @@ const UploadWidget = ({ onImageUpload, onDirectPixelEdit }) => {
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto p-4">
-      <div className="bg-white rounded-lg shadow-md p-6">
+    <div className="w-full">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200 p-6">
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-4">
             <button

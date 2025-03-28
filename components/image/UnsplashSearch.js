@@ -7,7 +7,6 @@ const UnsplashSearch = ({ onImageSelect, onClose }) => {
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
-  const [selectedImage, setSelectedImage] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [lastSearchedQuery, setLastSearchedQuery] = useState('');
@@ -61,35 +60,13 @@ const UnsplashSearch = ({ onImageSelect, onClose }) => {
     }
   }, [isMobile, lastSearchedQuery, hasSearched, searchUnsplash]);
 
-  // Handle search form submission
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      searchUnsplash(searchQuery.trim(), 1);
-    }
-  };
-
-  // Handle image selection
-  const handleImageClick = (image) => {
-    setSelectedImage(image);
-  };
-
-  // Handle page change
-  const handlePageChange = (newPage) => {
-    if (newPage >= 1 && newPage <= totalPages) {
-      searchUnsplash(lastSearchedQuery, newPage);
-    }
-  };
-
-  // Handle final image selection
-  const handleSelectImage = async () => {
-    if (!selectedImage) return;
-    
+  // Handle image selection and processing
+  const handleImageClick = async (image) => {
     setLoading(true);
     setError(null);
     
     try {
-      const response = await fetch(`/api/unsplash-photo?id=${selectedImage.id}`);
+      const response = await fetch(`/api/unsplash-photo?id=${image.id}`);
       const data = await response.json();
       
       if (!response.ok) {
@@ -132,9 +109,8 @@ const UnsplashSearch = ({ onImageSelect, onClose }) => {
           </button>
         </div>
         
-        {/* Search form */}
         <div className="px-4 pb-4">
-          <form onSubmit={handleSubmit} className="flex max-w-3xl mx-auto">
+          <form onSubmit={(e) => { e.preventDefault(); searchUnsplash(searchQuery.trim(), 1); }} className="flex max-w-3xl mx-auto">
             <input
               type="text"
               value={searchQuery}
@@ -155,51 +131,57 @@ const UnsplashSearch = ({ onImageSelect, onClose }) => {
       </div>
       
       {/* Scrollable Results */}
-      {(searchResults.length > 0 || loading) ? (
-        <div className="overflow-y-auto px-4">
-          {error && (
-            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg max-w-3xl mx-auto">
-              {error}
-            </div>
-          )}
-          
-          {searchResults.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-6 py-4">
-              {searchResults.map((image) => (
-                <div 
-                  key={image.id}
-                  onClick={() => handleImageClick(image)}
-                  className={`relative rounded-lg overflow-hidden cursor-pointer aspect-[4/3] group hover:shadow-lg transition-shadow ${
-                    selectedImage && selectedImage.id === image.id ? 'ring-4 ring-blue-500' : ''
-                  }`}
-                >
-                  <img 
-                    src={image.urls.small} 
-                    alt={image.alt_description || 'Unsplash image'} 
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity">
-                    <div className="absolute bottom-0 left-0 right-0 p-2 text-xs text-white bg-black bg-opacity-40 transform translate-y-full group-hover:translate-y-0 transition-transform">
-                      Photo by {image.user.name}
-                    </div>
+      <div className="overflow-y-auto px-4">
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg max-w-3xl mx-auto">
+            {error}
+          </div>
+        )}
+        
+        {searchResults.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-6 py-4">
+            {searchResults.map((image) => (
+              <div 
+                key={image.id}
+                onClick={() => handleImageClick(image)}
+                className="relative rounded-lg overflow-hidden cursor-pointer aspect-[4/3] group hover:shadow-lg transition-shadow"
+              >
+                <img 
+                  src={image.urls.small} 
+                  alt={image.alt_description || 'Unsplash image'} 
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity">
+                  <div className="absolute bottom-0 left-0 right-0 p-2 text-xs text-white bg-black bg-opacity-40 transform translate-y-full group-hover:translate-y-0 transition-transform">
+                    Photo by {image.user.name}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-          
-          {loading && (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-              <p className="mt-2 text-gray-600">Searching...</p>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="text-center py-8 text-gray-500">
-          {hasSearched ? `No images found for "${searchQuery}"` : 'Enter a search term to find images'}
-        </div>
-      )}
+              </div>
+            ))}
+          </div>
+        )}
+        
+        {loading && (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+            <p className="mt-2 text-gray-600">
+              {searchResults.length > 0 ? 'Processing image...' : 'Searching...'}
+            </p>
+          </div>
+        )}
+
+        {!loading && !hasSearched && (
+          <div className="text-center py-8 text-gray-500">
+            Enter a search term to find images
+          </div>
+        )}
+
+        {!loading && hasSearched && searchResults.length === 0 && (
+          <div className="text-center py-8 text-gray-500">
+            No images found for "{searchQuery}"
+          </div>
+        )}
+      </div>
       
       {/* Fixed Footer */}
       <div className="bg-white border-t border-gray-100">
@@ -207,7 +189,7 @@ const UnsplashSearch = ({ onImageSelect, onClose }) => {
         {totalPages > 1 && (
           <div className="p-4 flex justify-center space-x-2 border-b border-gray-100">
             <button
-              onClick={() => handlePageChange(page - 1)}
+              onClick={() => searchUnsplash(lastSearchedQuery, page - 1)}
               disabled={page === 1 || loading}
               className="flex items-center gap-2 px-4 py-2 rounded-md transition-colors text-gray-700 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:hover:bg-gray-100"
             >
@@ -217,7 +199,7 @@ const UnsplashSearch = ({ onImageSelect, onClose }) => {
               Page {page} of {totalPages}
             </span>
             <button
-              onClick={() => handlePageChange(page + 1)}
+              onClick={() => searchUnsplash(lastSearchedQuery, page + 1)}
               disabled={page === totalPages || loading}
               className="flex items-center gap-2 px-4 py-2 rounded-md transition-colors text-gray-700 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:hover:bg-gray-100"
             >
@@ -226,7 +208,7 @@ const UnsplashSearch = ({ onImageSelect, onClose }) => {
           </div>
         )}
         
-        {/* Actions */}
+        {/* Attribution */}
         <div className="p-4 flex justify-between items-center">
           <div className="text-xs text-gray-500">
             <a 
@@ -238,13 +220,6 @@ const UnsplashSearch = ({ onImageSelect, onClose }) => {
               Powered by Unsplash
             </a>
           </div>
-          <button
-            onClick={handleSelectImage}
-            disabled={!selectedImage || loading}
-            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-blue-300"
-          >
-            {loading ? 'Processing...' : 'Use Selected Image'}
-          </button>
         </div>
       </div>
     </div>

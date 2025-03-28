@@ -119,6 +119,7 @@ const AiImageGenerator = ({ onImageSelect, onClose, compact = false }) => {
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Describe what you want to generate..."
               className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              autoFocus
             />
             <button
               type="submit"
@@ -162,58 +163,83 @@ const AiImageGenerator = ({ onImageSelect, onClose, compact = false }) => {
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Generate with AI</h2>
-        <button
-          onClick={onClose}
-          className="text-gray-500 hover:text-gray-700"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="prompt" className="block text-sm font-medium text-gray-700 mb-1">
-            What would you like to generate?
-          </label>
-          <input
-            id="prompt"
-            type="text"
-            value={prompt}
-            onChange={(e) => {
-              setPrompt(e.target.value);
-              setError(null); // Clear error when user types
-            }}
-            placeholder="Use simple words (e.g., dog, car, house)"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-            disabled={isGenerating}
-          />
-          <p className="mt-1 text-xs text-gray-500">
-            Use simple words, and we'll take care of the rest.
-          </p>
+    <div className="w-full bg-white rounded-lg flex flex-col" 
+      style={{ 
+        minHeight: 'min-content',
+        maxHeight: generatedImages.length > 0 ? '90vh' : 'auto'
+      }}
+    >
+      {/* Header */}
+      <div className="bg-white flex-shrink-0">
+        <div className="p-4 flex justify-between items-center">
+          <h2 className="text-xl font-bold text-gray-800">Generate with AI</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300 rounded-lg p-1"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
-        <button
-          type="submit"
-          disabled={isGenerating || !prompt.trim()}
-          className="w-full px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-purple-300"
-        >
-          {isGenerating ? 'Generating...' : 'Generate Image'}
-        </button>
+        <div className="px-4 pb-4">
+          <div className="max-w-3xl mx-auto">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              What would you like to generate?
+            </label>
+            <form onSubmit={handleSubmit} className="flex">
+              <input
+                type="text"
+                value={prompt}
+                onChange={(e) => {
+                  setPrompt(e.target.value);
+                  setError(null);
+                }}
+                placeholder="Use simple words (e.g., dog, car, house)"
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                disabled={isGenerating}
+                autoFocus
+              />
+              <button
+                type="submit"
+                disabled={isGenerating || !prompt.trim()}
+                className="px-6 py-2 bg-purple-500 text-white rounded-r-lg hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-purple-300"
+              >
+                {isGenerating ? 'Generating...' : 'Generate'}
+              </button>
+            </form>
+            <p className="mt-2 text-xs text-gray-500">
+              Use simple words, and we'll take care of the rest.
+            </p>
+          </div>
+        </div>
+      </div>
 
+      {/* Content */}
+      <div className="px-4 flex-grow">
         {error && (
-          <div className="p-4 bg-red-50 text-red-600 rounded-lg">
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg max-w-3xl mx-auto">
             {error}
+          </div>
+        )}
+
+        {isGenerating && (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto"></div>
+            <p className="mt-2 text-gray-600">Generating your images...</p>
+          </div>
+        )}
+
+        {!isGenerating && !generatedImages.length && (
+          <div className="text-center py-8 text-gray-500">
+            Enter a prompt and click Generate to create images
           </div>
         )}
 
         {generatedImages.length > 0 && (
           <>
-            <div className="mt-6 grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 py-4">
               {generatedImages.map((imageUrl, index) => (
                 <button
                   key={index}
@@ -237,7 +263,7 @@ const AiImageGenerator = ({ onImageSelect, onClose, compact = false }) => {
                 </button>
               ))}
             </div>
-            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="mt-3 mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-center">
                 <span className="text-xl mr-2">👾</span>
                 <p className="text-sm text-blue-700">
@@ -247,7 +273,23 @@ const AiImageGenerator = ({ onImageSelect, onClose, compact = false }) => {
             </div>
           </>
         )}
-      </form>
+      </div>
+
+      {/* Footer */}
+      <div className="bg-white border-t border-gray-100 flex-shrink-0">
+        <div className="p-4 flex justify-between items-center">
+          <div className="text-xs text-gray-500">
+            <a 
+              href="https://ai.google.dev/docs/gemini_api_overview"
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-purple-500 hover:underline"
+            >
+              Powered by Google AI
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

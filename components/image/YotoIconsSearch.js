@@ -39,112 +39,145 @@ export default function YotoIconsSearch({ onIconSelect, onClose, onOpenAiGenerat
   };
 
   return (
-    <div className="w-full">
-      <div className="flex justify-between items-center mb-2">
-        <h2 className="text-2xl font-bold text-gray-800">Search Yoto Icons</h2>
-        <button
-          onClick={onClose}
-          className="text-gray-500 hover:text-gray-700"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-      
-      <div className="mb-6">
-        <a 
-          href="https://www.yotoicons.com" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="text-sm text-blue-500 hover:underline"
-        >
-          Powered by Yoto Icons
-        </a>
-      </div>
-
-      <form onSubmit={handleSearch} className="mb-6">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search Yoto Icons (e.g., dog, cat, nature)"
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+    <div 
+      className="w-full bg-white rounded-lg grid grid-rows-[auto_1fr_auto]" 
+      style={{ 
+        height: icons.length > 0 || loading ? '90vh' : 'auto',
+        maxHeight: icons.length > 0 || loading ? '900px' : '300px',
+        transition: 'max-height 0.3s ease-in-out'
+      }}
+    >
+      {/* Fixed Header */}
+      <div className="bg-white">
+        <div className="p-4 flex justify-between items-center">
+          <h2 className="text-xl font-bold text-gray-800">Search Yoto Icons</h2>
           <button
-            type="submit"
-            disabled={loading}
-            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300 rounded-lg p-1"
           >
-            {loading ? 'Searching...' : 'Search'}
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
-      </form>
-
-      {error && (
-        <div className="text-red-500 mb-4">
-          {error}
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        {icons.map((icon, index) => (
-          <div
-            key={index}
-            className="aspect-square relative rounded-lg overflow-hidden border border-gray-200 hover:border-blue-500 transition-colors cursor-pointer group"
-            onClick={() => {
-              const metadata = {
-                query: query.trim(),
-                author: icon.author.replace('@', ''),
-                source: 'yotoicons'
-              };
-              // Pass both URL and metadata to parent
-              onIconSelect({
-                url: icon.downloadUrl,
-                metadata: metadata
-              });
-            }}
-          >
-            {/* Checkerboard background for transparency */}
-            <div 
-              className="absolute inset-0" 
-              style={{
-                backgroundImage: 'linear-gradient(45deg, #e0e0e0 25%, transparent 25%), linear-gradient(-45deg, #e0e0e0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e0e0e0 75%), linear-gradient(-45deg, transparent 75%, #e0e0e0 75%)',
-                backgroundSize: '16px 16px',
-                backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0px',
-                zIndex: 0
-              }}
+        
+        <div className="px-4 pb-4">
+          <form onSubmit={handleSearch} className="flex max-w-3xl mx-auto">
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search Yoto Icons (e.g., dog, cat, nature)"
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              autoFocus
             />
-            
-            {/* Canvas for pixel-perfect rendering */}
-            <PixelIcon url={getProxiedImageUrl(icon.previewUrl)} title={icon.title} />
-
-            {/* Author attribution overlay */}
-            <div className="absolute inset-x-0 bottom-0 bg-black bg-opacity-50">
-              <div className="p-2 text-xs text-white">
-                by @{icon.author}
-              </div>
-            </div>
-          </div>
-        ))}
+            <button
+              type="submit"
+              disabled={loading || !query.trim()}
+              className="px-6 py-2 bg-green-500 text-white rounded-r-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-green-300"
+            >
+              {loading ? 'Searching...' : 'Search'}
+            </button>
+          </form>
+        </div>
       </div>
 
-      {!loading && hasSearched && icons.length === 0 && query && (
-        <div className="text-center text-gray-500 mt-8">
-          No icons found. Try a different search term.{' '}
-          <button
-            onClick={() => {
-              const currentQuery = query.trim();
-              onClose();
-              onOpenAiGenerator(currentQuery);
-            }}
-            className="text-blue-500 hover:underline"
-          >
-            Try Generating with AI
-          </button>
+      {/* Scrollable Results */}
+      <div className="overflow-y-auto px-4">
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg max-w-3xl mx-auto">
+            {error}
+          </div>
+        )}
+
+        {icons.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 py-4">
+            {icons.map((icon, index) => (
+              <div
+                key={index}
+                className="aspect-square relative rounded-lg overflow-hidden border border-gray-200 hover:border-green-500 transition-colors cursor-pointer group"
+                onClick={() => {
+                  const metadata = {
+                    query: query.trim(),
+                    author: icon.author.replace('@', ''),
+                    source: 'yotoicons'
+                  };
+                  onIconSelect({
+                    url: icon.downloadUrl,
+                    metadata: metadata
+                  });
+                }}
+              >
+                {/* Checkerboard background for transparency */}
+                <div 
+                  className="absolute inset-0" 
+                  style={{
+                    backgroundImage: 'linear-gradient(45deg, #e0e0e0 25%, transparent 25%), linear-gradient(-45deg, #e0e0e0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e0e0e0 75%), linear-gradient(-45deg, transparent 75%, #e0e0e0 75%)',
+                    backgroundSize: '16px 16px',
+                    backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0px',
+                    zIndex: 0
+                  }}
+                />
+                
+                {/* Canvas for pixel-perfect rendering */}
+                <PixelIcon url={getProxiedImageUrl(icon.previewUrl)} title={icon.title} />
+
+                {/* Author attribution overlay */}
+                <div className="absolute inset-x-0 bottom-0 bg-black bg-opacity-50">
+                  <div className="p-2 text-xs text-white">
+                    by @{icon.author}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!loading && hasSearched && icons.length === 0 && query && (
+          <div className="text-center text-gray-500 mt-8">
+            No icons found. Try a different search term.{' '}
+            <button
+              onClick={() => {
+                const currentQuery = query.trim();
+                onClose();
+                onOpenAiGenerator(currentQuery);
+              }}
+              className="text-green-500 hover:underline"
+            >
+              Try Generating with AI
+            </button>
+          </div>
+        )}
+
+        {loading && (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
+            <p className="mt-2 text-gray-600">Searching...</p>
+          </div>
+        )}
+
+        {!loading && !hasSearched && (
+          <div className="text-center text-gray-500 py-8">
+            Enter a search term to find icons
+          </div>
+        )}
+      </div>
+
+      {/* Fixed Footer */}
+      <div className="bg-white border-t border-gray-100">
+        <div className="p-4 flex justify-between items-center">
+          <div className="text-xs text-gray-500">
+            <a 
+              href="https://www.yotoicons.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-green-500 hover:underline"
+            >
+              Powered by Yoto Icons
+            </a>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

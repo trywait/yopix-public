@@ -8,13 +8,13 @@ const DownloadButton = ({ imageUrl, filename = 'pixel-art.png' }) => {
   const [error, setError] = useState(null);
 
   const handleDownload = () => {
-    console.log('[DEBUG] Download requested with filename:', filename);
+    console.log('[DEBUG] Starting image download');
     try {
       // Get the appropriate URL (either direct URL or download URL from object)
       const downloadUrl = typeof imageUrl === 'object' ? imageUrl.download : imageUrl;
       
       if (!downloadUrl) {
-        console.error('No image URL provided for download');
+        console.error('[DEBUG] No image URL provided for download');
         return;
       }
 
@@ -30,7 +30,7 @@ const DownloadButton = ({ imageUrl, filename = 'pixel-art.png' }) => {
       // Clean up
       document.body.removeChild(link);
     } catch (err) {
-      console.error('Error downloading image:', err);
+      console.error('[DEBUG] Download failed:', err);
       setError('Failed to download image. Please try again.');
     }
   };
