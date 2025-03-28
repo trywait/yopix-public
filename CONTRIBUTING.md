@@ -1,10 +1,10 @@
 # Contributing to YoPix
 
-> 👋 Hey there! Quick heads up: YoPix was built by a dad with zero development experience, paired with AI (Claude) to create a tool I wished existed for my Yoto Player adventures. The code might be messy, probably breaks a bunch of best practices, and could make seasoned developers cry - but hey, it works! 😅
+> 👋 Hey there! Quick heads up: YoPix was built by a dad (me) with zero development experience, paired with AI (I know...) to create a tool I wished existed for my kids and Yoto MYO cards and playlists. The code might be messy, probably breaks a bunch of best practices, and could make seasoned developers cry - but hey, it works! 😅
 >
-> This project stands on the shoulders of giants, using amazing open-source tools like Pixel It, Next.js, and others. Please support these original projects and their creators. YoPix is not meant for profit - it's just a fun tool for the community.
+> This project stands on the shoulders of tons of other great projects, using amazing open-source tools like Pixel It, Next.js, and others. Also allows you to search the great resource that is Yoto icons. Please support these original projects and their creators. YoPix is not meant for profit - it's just a fun tool for the community.
 >
-> Also important to note: This project has no affiliation with Yoto or Yoto Player. I'm just a dad who wanted an easier way to make pixel art for my kids' cards.
+> Also important to note: This project has no affiliation with Yoto or Yoto Player. I'm just a dad who wanted an easier way to make pixel art for my kids' MYO cards and Playlists.
 
 Thank you for your interest in contributing to YoPix! We welcome contributions from the community and are excited to have you help make YoPix even better. This document provides guidelines and instructions for contributing.
 
@@ -48,14 +48,18 @@ This project and everyone participating in it are governed by our Code of Conduc
 1. Make your changes in your feature branch
 2. Write or update tests as needed
 3. Ensure your code follows the project's coding standards
-4. Run tests and ensure they pass:
+4. If modifying rate limits:
+   - Changes to rate limiting should be made in `lib/rate-limit.js`
+   - Consider the impact on API usage and server resources
+   - Document any changes in both code comments and README.md
+5. Run tests and ensure they pass:
    ```bash
    npm run test
    # or
    yarn test
    ```
-5. Update documentation as needed
-6. Commit your changes using clear commit messages
+6. Update documentation as needed
+7. Commit your changes using clear commit messages
 
 ### Commit Message Format
 

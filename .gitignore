@@ -32,7 +32,4 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
-
-# private development documentation
-DEVELOPMENT.md 
+next-env.d.ts 

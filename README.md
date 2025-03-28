@@ -1,5 +1,11 @@
 # YoPix - 16×16 Pixel Art Converter
 
+> 👋 Hey there! Quick heads up: YoPix was built by a dad (me) with zero development experience, paired with AI (I know...) to create a tool I wished existed for my kids and Yoto MYO cards and playlists. The code might be messy, probably breaks a bunch of best practices, and could make seasoned developers cry - but hey, it works! 😅
+>
+> This project stands on the shoulders of tons of other great projects, using amazing open-source tools like Pixel It, Next.js, and others. Also allows you to search the great resource that is Yoto icons. Please support these original projects and their creators. YoPix is not meant for profit - it's just a fun tool for the community.
+>
+> Also important to note: This project has no affiliation with Yoto or Yoto Player. I'm just a dad who wanted an easier way to make pixel art for my kids' MYO cards and playlists.
+
 YoPix is a web application that converts any image into a true 16×16 pixel art representation using the open-source [Pixel It](https://github.com/giventofly/pixelit) library. The application is built with [Next.js](https://nextjs.org/) and styled with [Tailwind CSS](https://tailwindcss.com/).
 
 ## Features
@@ -7,7 +13,7 @@ YoPix is a web application that converts any image into a true 16×16 pixel art 
 - **Accurate 16×16 Pixel Art Output**: Converts any image to exactly 16×16 pixels
 - **Advanced Image Preprocessing**:
   - **Interactive Cropping**: Precisely select the portion of your image to convert
-  - **Background Removal**: Isolate subjects from their backgrounds using AI
+  - **Background Removal**: Optionally isolate subjects from their backgrounds
 - **Multiple Image Sources**:
   - **File Upload**: Drag & drop or file selection
   - **URL Input**: Direct image URL input
@@ -16,12 +22,10 @@ YoPix is a web application that converts any image into a true 16×16 pixel art 
   - **AI Generation**: Create custom pixel art using [Google Gemini 2.0 Flash](https://ai.google.dev/gemini-api)
 - **Advanced Pixel Editing**:
   - **Color Palette**: Choose from 2 to 256 colors
-  - **Interactive Editor**: Fine-tune your pixel art with a powerful editor
-  - **Eyedropper Tool**: Pick colors from your image
+  - **Interactive Editor**: Fine-tune your pixel art with a powerful editor with standard image editing tools
   - **Undo/Redo**: Track your changes with history
 - **Client-Side Processing**: All image conversion happens in the browser
-- **Modern, Responsive UI**: Two-column layout for desktop and optimized for mobile
-- **Preview & Download**: View and download your pixel art creations
+- **Download & Share**: View, download, and share your pixel art creations
 - **Built-in Rate Limiting**:
   - AI Generation: 50 requests per 15 minutes
   - API Operations (Unsplash/Yoto): 100 requests per 15 minutes
