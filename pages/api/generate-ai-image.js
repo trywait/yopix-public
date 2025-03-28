@@ -1,19 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import rateLimit from 'express-rate-limit';
-
-// Rate limiting configuration
-const rateLimitConfig = {
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // 100 requests per window
-  message: 'Too many requests from this IP, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-};
-
-// Create rate limiter only if enabled
-const limiter = process.env.RATE_LIMIT_ENABLED === 'true' 
-  ? rateLimit(rateLimitConfig)
-  : (req, res, next) => next();
+import { strictLimiter, withRateLimit } from '../../lib/rate-limit';
 
 // CORS configuration
 const corsMiddleware = (handler) => async (req, res) => {
@@ -43,17 +29,9 @@ const validatePrompt = (prompt) => {
   return true;
 };
 
-// Enhance the prompt with pixel art requirements
-const enhancePrompt = (userPrompt) => {
-  return `Create a 1:1 pixel art icon of: ${userPrompt}
-Rules:
-- Black background
-- Extreme close-up composition (subject fills 90%+ of frame)
-- ${userPrompt} centered with direct frontal view
-- Bright solid colors
-- 8-bit style, large pixels
-- Simple shapes, no gradients
-- 16x16 compatible`;
+// Helper function to enhance the prompt
+const enhancePrompt = (prompt) => {
+  return `Create a pixel art style image of: ${prompt}. Make it simple and iconic, suitable for a 16x16 pixel grid.`;
 };
 
 async function handler(req, res) {
@@ -155,4 +133,4 @@ async function handler(req, res) {
 }
 
 // Apply rate limiting and CORS middleware
-export default corsMiddleware(handler); 
+export default corsMiddleware(withRateLimit(handler, strictLimiter)); 

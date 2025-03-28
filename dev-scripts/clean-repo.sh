@@ -14,9 +14,7 @@ read
 # 2. Create a text file with patterns to replace
 echo "Creating patterns file..."
 cat > patterns.txt << EOL
-NEXT_PUBLIC_FIREBASE_API_KEY=[a-zA-Z0-9_-]*
 UNSPLASH_ACCESS_KEY=[a-zA-Z0-9_-]*
-NEXT_PUBLIC_FIREBASE_APP_ID=[a-zA-Z0-9_:/-]*
 EOL
 
 echo "To clean your repository, do the following:"

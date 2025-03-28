@@ -22,6 +22,10 @@ YoPix is a web application that converts any image into a true 16×16 pixel art 
 - **Client-Side Processing**: All image conversion happens in the browser
 - **Modern, Responsive UI**: Two-column layout for desktop and optimized for mobile
 - **Preview & Download**: View and download your pixel art creations
+- **Built-in Rate Limiting**:
+  - AI Generation: 50 requests per 15 minutes
+  - API Operations (Unsplash/Yoto): 100 requests per 15 minutes
+  - Basic Operations: 200 requests per 5 minutes
 
 ## Demo
 
@@ -61,21 +65,14 @@ YoPix is a web application that converts any image into a true 16×16 pixel art 
    - API clients
 
 3. Set up Google AI:
-   - Go to [Google Cloud Console](https://console.cloud.google.com/)
-   - Create a new project or select an existing one
-   - Click on "APIs & Services" > "Library"
-   - Search for "Gemini API" and click "Enable"
-   - Go to "APIs & Services" > "Credentials"
-   - Click "Create Credentials" > "API Key"
+   - Go to [Google AI Studio](https://aistudio.google.com/app/apikey)
+   - Create a new API key
    - Copy your API key
-   - (Optional) Click "Edit" on the API key to restrict it to specific domains/IPs
 
 4. Set up Unsplash:
    - Go to [Unsplash Developers](https://unsplash.com/developers)
    - Sign up for a developer account
-   - Click "Your apps" > "New Application"
-   - Accept the terms and conditions
-   - Give your app a name and description
+   - Create a new application
    - Copy your "Access Key" (not the Secret Key)
 
 5. Create a `.env.local` file in the root directory:
@@ -86,12 +83,12 @@ YoPix is a web application that converts any image into a true 16×16 pixel art 
    
    Add your API keys to the file:
    ```
-   # Required API Keys
+   # Google AI API Key for Gemini
    GOOGLE_AI_API_KEY=your_google_ai_api_key_here
+
+   # Unsplash API credentials
    UNSPLASH_ACCESS_KEY=your_unsplash_access_key_here
    ```
-   
-   Replace `your_google_ai_api_key_here` and `your_unsplash_access_key_here` with the actual keys you copied.
 
 6. Run the development server:
    ```bash
@@ -101,6 +98,55 @@ YoPix is a web application that converts any image into a true 16×16 pixel art 
    ```
 
 7. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Security Features
+
+### Rate Limiting
+The application includes built-in rate limiting to prevent abuse:
+
+- **AI Image Generation**: Limited to 50 requests per 15 minutes per IP
+- **API Operations**: Limited to 100 requests per 15 minutes per IP (Unsplash/Yoto)
+- **Basic Operations**: Limited to 200 requests per 5 minutes per IP
+
+These limits are configured in `lib/rate-limit.js` and can be adjusted if needed.
+
+#### Modifying Rate Limits
+For local development or custom deployments, you can modify the rate limits:
+
+1. Open `lib/rate-limit.js`
+2. Adjust the limits in the respective configurations:
+   ```javascript
+   // For AI Generation
+   export const strictLimiter = rateLimit({
+     windowMs: 15 * 60 * 1000, // Change time window (in milliseconds)
+     max: 50,                  // Change max requests
+   });
+
+   // For API Operations
+   export const standardLimiter = rateLimit({
+     windowMs: 15 * 60 * 1000, // Change time window (in milliseconds)
+     max: 100,                 // Change max requests
+   });
+
+   // For Basic Operations
+   export const lenientLimiter = rateLimit({
+     windowMs: 5 * 60 * 1000,  // Change time window (in milliseconds)
+     max: 200,                 // Change max requests
+   });
+   ```
+
+3. To disable rate limiting for local development:
+   ```javascript
+   // Create a pass-through limiter
+   const disabledLimiter = (req, res, next) => next();
+   
+   // Replace any limiter with the disabled one
+   export const strictLimiter = disabledLimiter;
+   export const standardLimiter = disabledLimiter;
+   export const lenientLimiter = disabledLimiter;
+   ```
+
+**Note**: Be cautious when modifying rate limits in production environments, as they help protect your API keys and prevent abuse.
 
 ## How It Works
 
