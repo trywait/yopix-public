@@ -40,17 +40,16 @@ const AiImageGenerator = ({ onImageSelect, onClose, compact = false }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          prompt: userText // Send the raw user input instead of enhanced prompt
+          prompt: userText
         }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate image');
+        throw new Error(data.error || 'Failed to generate image');
       }
 
-      const data = await response.json();
-      
       // Convert base64 data to image URLs if needed
       const imageUrls = data.images.map(image => {
         // Check if the image is already a URL or base64
@@ -65,9 +64,19 @@ const AiImageGenerator = ({ onImageSelect, onClose, compact = false }) => {
     } catch (err) {
       console.error('Generation error:', err);
       
-      // Check if it's a quota/rate limit error
-      if (err.message.includes('quota') || err.message.includes('429') || err.message.includes('Too Many Requests')) {
-        setError('Generation Limit Reached. Please try again later.');
+      // Check if it's a rate limit error
+      if (err.message.includes('Rate limit exceeded') || err.message.includes('429')) {
+        setError(
+          <div className="space-y-2">
+            <p className="font-medium">Rate Limit Reached</p>
+            <p className="text-sm">The AI image generation service is temporarily unavailable. You can:</p>
+            <ul className="text-sm list-disc list-inside">
+              <li>Wait a minute and try again</li>
+              <li>Upload an image instead</li>
+              <li>Search Unsplash or Yoto Iconsfor a starting image</li>
+            </ul>
+          </div>
+        );
       } else if (err.message.includes('Invalid prompt')) {
         setError('Please use only letters, numbers, spaces, and basic punctuation.');
       } else {
@@ -184,7 +193,7 @@ const AiImageGenerator = ({ onImageSelect, onClose, compact = false }) => {
             disabled={isGenerating}
           />
           <p className="mt-1 text-xs text-gray-500">
-            Use simple words and basic punctuation only (letters, numbers, spaces, .,!?-_())
+            Use simple words, and we'll take care of the rest.
           </p>
         </div>
 

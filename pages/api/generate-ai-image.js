@@ -45,20 +45,15 @@ const validatePrompt = (prompt) => {
 
 // Enhance the prompt with pixel art requirements
 const enhancePrompt = (userPrompt) => {
-  return `Create a 1:1 pixel art icon of a ${userPrompt} on a black background, with these strict requirements:
-- Always output a square image on a black background.
-- Orient the ${userPrompt} in a way that it is large and takes up the majority of the image frame.
-- When possible, make the subject symmetrical.
-- Use accurate, bright, saturated colors that stand out dramatically against the black background.
-- Create the subject using distinct, solid-colored shapes.
-- Make the subject large and centered, a majority (90%) of the image frame.
-- Utilize a style reminiscent of retro 8-bit video game sprites— with large pixels (each as large as 1/256 of the image)
-- Maintain simplicity and geometric forms; strictly no gradients or shading.
-- The design should be easily recognizable and effective when scaled down to 16x16 pixels.
-- Exclude any text, borders, or purely decorative elements.
-- Ensure every color used for the subject is vividly distinct and highly contrasting against the pure black background.
-- The design must work at 16x16 resolution, so avoid any fine details, thin elements, or complex shapes that would be lost at low resolution.
-- The overall aesthetic should evoke retro video game sprites or modern, clean minimalist icons.`;
+  return `Create a 1:1 pixel art icon of: ${userPrompt}
+Rules:
+- Black background
+- Extreme close-up composition (subject fills 90%+ of frame)
+- ${userPrompt} centered with direct frontal view
+- Bright solid colors
+- 8-bit style, large pixels
+- Simple shapes, no gradients
+- 16x16 compatible`;
 };
 
 async function handler(req, res) {
@@ -146,14 +141,15 @@ async function handler(req, res) {
     if (error.message.includes('API key')) {
       errorMessage = 'Invalid API key';
       statusCode = 401;
-    } else if (error.message.includes('rate limit')) {
-      errorMessage = 'Rate limit exceeded';
+    } else if (error.message.includes('rate limit') || error.message.includes('429') || error.message.includes('RESOURCE_EXHAUSTED')) {
+      errorMessage = 'Rate limit exceeded. Please wait a few minutes before trying again, or try using a different method like uploading an image or searching Unsplash.';
       statusCode = 429;
     }
 
     res.status(statusCode).json({ 
       error: errorMessage,
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      code: statusCode === 429 ? 'RATE_LIMIT_EXCEEDED' : undefined
     });
   }
 }
