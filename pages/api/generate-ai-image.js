@@ -1,6 +1,67 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import rateLimit from 'express-rate-limit';
 
-export default async function handler(req, res) {
+// Rate limiting configuration
+const rateLimitConfig = {
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // 100 requests per window
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+};
+
+// Create rate limiter only if enabled
+const limiter = process.env.RATE_LIMIT_ENABLED === 'true' 
+  ? rateLimit(rateLimitConfig)
+  : (req, res, next) => next();
+
+// CORS configuration
+const corsMiddleware = (handler) => async (req, res) => {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
+
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  return handler(req, res);
+};
+
+// Input validation
+const validatePrompt = (prompt) => {
+  if (!prompt || typeof prompt !== 'string') return false;
+  if (prompt.length > 500) return false; // Max length check
+  if (!/^[a-zA-Z0-9\s\-_.,!?()]+$/.test(prompt)) return false; // Only allow safe characters
+  return true;
+};
+
+// Enhance the prompt with pixel art requirements
+const enhancePrompt = (userPrompt) => {
+  return `Create a 1:1 pixel art icon of a ${userPrompt} on a black background, with these strict requirements:
+- Always output a square image on a black background.
+- Orient the ${userPrompt} in a way that it is large and takes up the majority of the image frame.
+- When possible, make the subject symmetrical.
+- Use accurate, bright, saturated colors that stand out dramatically against the black background.
+- Create the subject using distinct, solid-colored shapes.
+- Make the subject large and centered, a majority (90%) of the image frame.
+- Utilize a style reminiscent of retro 8-bit video game sprites— with large pixels (each as large as 1/256 of the image)
+- Maintain simplicity and geometric forms; strictly no gradients or shading.
+- The design should be easily recognizable and effective when scaled down to 16x16 pixels.
+- Exclude any text, borders, or purely decorative elements.
+- Ensure every color used for the subject is vividly distinct and highly contrasting against the pure black background.
+- The design must work at 16x16 resolution, so avoid any fine details, thin elements, or complex shapes that would be lost at low resolution.
+- The overall aesthetic should evoke retro video game sprites or modern, clean minimalist icons.`;
+};
+
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -8,11 +69,25 @@ export default async function handler(req, res) {
   try {
     const { prompt } = req.body;
 
-    if (!prompt) {
-      return res.status(400).json({ error: 'Prompt is required' });
+    // Input validation
+    if (!validatePrompt(prompt)) {
+      return res.status(400).json({ 
+        error: 'Invalid prompt. Prompt must be a string containing only alphanumeric characters, spaces, hyphens, underscores, periods, commas, exclamation marks, question marks, and parentheses, with a maximum length of 500 characters.' 
+      });
     }
 
-    const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
+    const apiKey = process.env.GOOGLE_AI_API_KEY;
+    if (!apiKey) {
+      console.error('Google AI API key is missing');
+      return res.status(500).json({ 
+        error: 'Server configuration error',
+        details: process.env.NODE_ENV === 'development' 
+          ? 'Google AI API key is not configured. Please add GOOGLE_AI_API_KEY to your .env.local file.'
+          : undefined
+      });
+    }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
     
     // Use the correct model for image generation
     const model = genAI.getGenerativeModel({
@@ -23,16 +98,8 @@ export default async function handler(req, res) {
       },
     });
     
-    // Craft the prompt with specific requirements
-    const enhancedPrompt = `generate a simple 8bit pixel image of a ${prompt} with large pixels, centered on a white background. Follow these specific requirements:
-    - Use bold, clear shapes with minimal details
-    - Ensure the image is perfectly square (1:1 aspect ratio)
-    - Make the subject instantly recognizable at 16x16 pixels
-    - Avoid complex textures or gradients
-    - Use high contrast between the subject and the white background
-    - Limit the color palette to 8-10 colors maximum
-    - Focus on creating a strong, readable silhouette
-    - Keep the style consistent with classic 8-bit pixel art`;
+    // Enhance the prompt with our requirements
+    const enhancedPrompt = enhancePrompt(prompt);
 
     // Generate two variations by making separate requests
     const [result1, result2] = await Promise.all([
@@ -71,9 +138,25 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error('Image generation error:', error);
-    res.status(500).json({ 
-      error: 'Failed to generate image',
-      details: error.message 
+    
+    // Handle specific error cases
+    let errorMessage = 'Failed to generate image';
+    let statusCode = 500;
+    
+    if (error.message.includes('API key')) {
+      errorMessage = 'Invalid API key';
+      statusCode = 401;
+    } else if (error.message.includes('rate limit')) {
+      errorMessage = 'Rate limit exceeded';
+      statusCode = 429;
+    }
+
+    res.status(statusCode).json({ 
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
-} 
+}
+
+// Apply rate limiting and CORS middleware
+export default corsMiddleware(handler); 

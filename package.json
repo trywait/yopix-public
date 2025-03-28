@@ -6,15 +6,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "node scripts/download-models.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.0",
     "@imgly/background-removal": "^1.6.0",
-    "axios": "^1.6.7",
-    "firebase": "^10.8.0",
+    "axios": "^1.8.4",
+    "express-rate-limit": "^7.5.0",
+    "lru-cache": "^11.1.0",
     "next": "^14.2.0",
-    "onnxruntime-web": "1.21.0-dev.20250206-d981b153d3",
     "react": "^18.2.0",
     "react-colorful": "^5.6.1",
     "react-dom": "^18.2.0",
@@ -24,8 +25,8 @@
   "devDependencies": {
     "@types/node": "^20.11.24",
     "@types/react": "^18.2.61",
+    "@types/react-dom": "^18.2.19",
     "autoprefixer": "^10.4.18",
-    "copy-webpack-plugin": "^13.0.0",
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.2.0",
     "postcss": "^8.4.35",

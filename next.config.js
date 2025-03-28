@@ -3,7 +3,7 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
   images: {
-    domains: ['firebasestorage.googleapis.com', 'www.yotoicons.com'],
+    domains: ['www.yotoicons.com'],
   },
   // Configure WebAssembly loading
   webpack: (config, { isServer }) => {

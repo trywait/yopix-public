@@ -2,13 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Root variables */
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;
   --background-end-rgb: 255, 255, 255;
-  --cursor-color: pointer; /* Default, will be overridden with JS */
+  --cursor-color: pointer;
 }
 
+/* Dark mode variables */
 @media (prefers-color-scheme: dark) {
   :root {
     --foreground-rgb: 255, 255, 255;
@@ -17,6 +19,154 @@
   }
 }
 
+@layer base {
+  body {
+    @apply font-['Poppins'] text-foreground bg-gradient-to-b from-background-start to-background-end;
+  }
+
+  /* Base input styles */
+  input[type="text"],
+  input[type="url"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  textarea {
+    @apply text-neutral-800;
+  }
+
+  /* Base placeholder styles */
+  ::placeholder {
+    @apply text-neutral-500 opacity-100;
+  }
+
+  :-ms-input-placeholder {
+    @apply text-neutral-500 opacity-100;
+  }
+
+  ::-ms-input-placeholder {
+    @apply text-neutral-500 opacity-100;
+  }
+}
+
+@layer components {
+  /* React Colorful styles */
+  .react-colorful {
+    @apply w-full h-auto;
+    aspect-ratio: 1 / 1;
+  }
+
+  .react-colorful__saturation {
+    @apply w-full rounded-md;
+  }
+
+  .react-colorful__hue {
+    @apply w-full h-5 mt-2.5;
+  }
+
+  /* Canvas styles */
+  .pixel-canvas {
+    @apply image-rendering-pixelated image-rendering-crisp-edges;
+    -ms-interpolation-mode: nearest-neighbor;
+  }
+
+  .canvas-container {
+    @apply flex justify-center items-center min-h-[200px] w-full bg-white border border-gray-200 rounded-md p-4;
+  }
+
+  /* Cursor styles */
+  .cursor-eyedropper {
+    @apply cursor-[url('/icons/eyedropper-cursor.svg')_1_20,crosshair];
+  }
+
+  .color-cursor {
+    @apply cursor-[var(--cursor-color)];
+  }
+
+  /* Input styles */
+  .input-base {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+  }
+
+  /* Button styles */
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium transition-colors duration-200;
+  }
+
+  .btn-primary {
+    @apply bg-primary-500 text-white hover:bg-primary-600;
+  }
+
+  .btn-secondary {
+    @apply bg-neutral-200 text-neutral-800 hover:bg-neutral-300;
+  }
+
+  .btn-danger {
+    @apply bg-red-500 text-white hover:bg-red-600;
+  }
+
+  /* Modal styles */
+  .modal-overlay {
+    @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50;
+  }
+
+  .modal-content {
+    @apply bg-white rounded-lg p-6 max-w-lg w-full mx-4 shadow-xl;
+  }
+}
+
+@layer utilities {
+  /* Image rendering utilities */
+  .image-rendering-pixelated {
+    image-rendering: pixelated;
+  }
+
+  .image-rendering-crisp-edges {
+    image-rendering: crisp-edges;
+  }
+
+  /* Placeholder utilities */
+  .placeholder-base {
+    @apply text-neutral-500;
+  }
+
+  /* Scrollbar utilities */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Text utilities */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Animation utilities */
+  .animate-fade-in {
+    @apply transition-opacity duration-200;
+  }
+
+  .animate-fade-in-enter {
+    opacity: 0;
+  }
+
+  .animate-fade-in-enter-active {
+    opacity: 1;
+  }
+
+  .animate-fade-in-exit {
+    opacity: 1;
+  }
+
+  .animate-fade-in-exit-active {
+    opacity: 0;
+  }
+}
+
+/* Base body styles */
 body {
   font-family: 'Poppins', sans-serif;
   color: rgb(var(--foreground-rgb));
@@ -54,57 +204,9 @@ textarea {
   opacity: 1;
 }
 
-/* React Colorful custom styles */
-.react-colorful {
-  width: 100% !important;
-  height: auto !important;
-  aspect-ratio: 1 / 1;
-}
-
-.react-colorful__saturation {
-  width: 100% !important;
-  border-radius: 4px !important;
-}
-
-.react-colorful__hue {
-  width: 100% !important;
-  height: 20px !important;
-  margin-top: 10px !important;
-}
-
-/* Pixel art specific styles */
-.pixel-canvas {
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
-  -ms-interpolation-mode: nearest-neighbor;
-}
-
-/* Container styles for better display */
-.canvas-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 200px;
-  width: 100%;
-  background-color: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.375rem;
-  padding: 1rem;
-}
-
-/* Cursor styles */
-.cursor-eyedropper {
-  cursor: url('/icons/eyedropper-cursor.svg') 1 20, crosshair !important;
-}
-
 /* Custom cursors */
 .eyedropper-cursor {
   cursor: url('/icons/eyedropper-cursor.svg') 1 20, crosshair !important;
-}
-
-.color-cursor {
-  /* The actual value will be set via JavaScript */
-  cursor: var(--cursor-color) !important;
 }
 
 /* For browsers that don't support CSS custom properties for cursors */

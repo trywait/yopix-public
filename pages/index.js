@@ -1,14 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import Script from 'next/script';
-import UploadWidget from '../components/UploadWidget';
-import PixelArtProcessor from '../components/PixelArtProcessor';
-import ImagePreview from '../components/ImagePreview';
-import DownloadButton from '../components/DownloadButton';
-import SimpleImagePreprocessor from '../components/ImagePreprocessor';
-import Loader from '../components/Loader';
-import PixelEditor from '../components/PixelEditor';
-import ConfirmationModal from '../components/ConfirmationModal';
+import UploadWidget from '../components/image/UploadWidget';
+import PixelArtProcessor from '../components/editor/PixelArtProcessor';
+import ImagePreview from '../components/image/ImagePreview';
+import DownloadButton from '../components/ui/DownloadButton';
+import SimpleImagePreprocessor from '../components/image/ImagePreprocessor';
+import Loader from '../components/ui/Loader';
+import PixelEditor from '../components/editor/PixelEditor';
+import ConfirmationModal from '../components/modals/ConfirmationModal';
 import { removeBackground } from '@imgly/background-removal';
 
 export default function Home() {
@@ -693,7 +693,6 @@ export default function Home() {
                         ? `yopix-${pixelatedImage.metadata.query.replace(/\s+/g, '+')}-${pixelatedImage.metadata.source}-${pixelatedImage.metadata.author}-edited.png`
                         : `yopix-${aiPrompt ? aiPrompt.toLowerCase().replace(/[^a-z0-9]/g, '-') : 'pixel-art'}-${colorCount}colors${editedImage ? '-edited' : ''}.png`
                     }
-                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2"
                   />
                 </div>
               </div>

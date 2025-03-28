@@ -11,6 +11,7 @@ const UploadWidget = ({ onImageUpload, onDirectPixelEdit }) => {
   const [showUnsplashSearch, setShowUnsplashSearch] = useState(false);
   const [showYotoIconsSearch, setShowYotoIconsSearch] = useState(false);
   const [showAiInput, setShowAiInput] = useState(false);
+  const [aiInitialPrompt, setAiInitialPrompt] = useState('');
   const [attributionInfo, setAttributionInfo] = useState(null);
 
   // Function to check if a file is an animated GIF
@@ -251,6 +252,11 @@ const UploadWidget = ({ onImageUpload, onDirectPixelEdit }) => {
             <YotoIconsSearch
               onIconSelect={handleYotoIconSelect}
               onClose={() => setShowYotoIconsSearch(false)}
+              onOpenAiGenerator={(query) => {
+                setShowYotoIconsSearch(false);
+                setAiInitialPrompt(query);
+                setShowAiInput(true);
+              }}
             />
           </div>
         </div>
@@ -261,7 +267,11 @@ const UploadWidget = ({ onImageUpload, onDirectPixelEdit }) => {
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full">
             <AiImageGenerator
               onImageSelect={onImageUpload}
-              onClose={() => setShowAiInput(false)}
+              onClose={() => {
+                setShowAiInput(false);
+                setAiInitialPrompt('');
+              }}
+              initialPrompt={aiInitialPrompt}
             />
           </div>
         </div>

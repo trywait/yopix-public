@@ -6,46 +6,47 @@ const AiImageGenerator = ({ onImageSelect, onClose, compact = false }) => {
   const [error, setError] = useState(null);
   const [generatedImages, setGeneratedImages] = useState([]);
 
+  // Add validation function
+  const validatePrompt = (text) => {
+    if (!text) return 'Please enter a prompt';
+    if (text.length > 500) return 'Prompt must be less than 500 characters';
+    
+    // Only allow: alphanumeric, spaces, hyphens, underscores, periods, commas, exclamation marks, question marks, and parentheses
+    const validRegex = /^[a-zA-Z0-9\s\-_.,!?()\u0020]+$/;
+    if (!validRegex.test(text)) {
+      return 'Only letters, numbers, spaces, and basic punctuation (.,!?-_()) are allowed';
+    }
+    return null;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!prompt.trim()) return;
+    const userText = prompt.trim();
+    
+    // Client-side validation
+    const validationError = validatePrompt(userText);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
 
     setIsGenerating(true);
     setError(null);
 
     try {
-      // Store the raw user input
-      const userText = prompt.trim();
-      
-      // Create the enhanced prompt for the API
-      const enhancedPrompt = `Create a 1:1 pixel art icon of a ${userText} on a black background, with these strict requirements:
-- Always output a square image on a black background.
-- Orient the ${userText} in a way that it is large and takes up the majority of the image frame.
-- When possible, make the subject symmetrical.
-- Use accurate, bright, saturated colors that stand out dramatically against the black background.
-- Create the subject using distinct, solid-colored shapes.
-- Make the subject large and centered, a majority (90%) of the image frame.
-- Utilize a style reminiscent of retro 8-bit video game sprites— with large pixels (each as large as 1/256 of the image)
-- Maintain simplicity and geometric forms; strictly no gradients or shading.
-- The design should be easily recognizable and effective when scaled down to 16x16 pixels.
-- Exclude any text, borders, or purely decorative elements.
-- Ensure every color used for the subject is vividly distinct and highly contrasting against the pure black background.
-- The design must work at 16x16 resolution, so avoid any fine details, thin elements, or complex shapes that would be lost at low resolution.
-- The overall aesthetic should evoke retro video game sprites or modern, clean minimalist icons.`;
-
       const response = await fetch('/api/generate-ai-image', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          prompt: enhancedPrompt
+          prompt: userText // Send the raw user input instead of enhanced prompt
         }),
       });
 
       if (!response.ok) {
-        const error = await response.text();
-        throw new Error(error || 'Failed to generate image');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate image');
       }
 
       const data = await response.json();
@@ -66,7 +67,9 @@ const AiImageGenerator = ({ onImageSelect, onClose, compact = false }) => {
       
       // Check if it's a quota/rate limit error
       if (err.message.includes('quota') || err.message.includes('429') || err.message.includes('Too Many Requests')) {
-        setError('<strong>Generation Limit Reached.</strong><br/>Please use a different image upload method');
+        setError('Generation Limit Reached. Please try again later.');
+      } else if (err.message.includes('Invalid prompt')) {
+        setError('Please use only letters, numbers, spaces, and basic punctuation.');
       } else {
         setError('Failed to generate image. Please try again.');
       }
@@ -172,11 +175,17 @@ const AiImageGenerator = ({ onImageSelect, onClose, compact = false }) => {
             id="prompt"
             type="text"
             value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Enter a description of what you want to generate..."
+            onChange={(e) => {
+              setPrompt(e.target.value);
+              setError(null); // Clear error when user types
+            }}
+            placeholder="Use simple words (e.g., dog, car, house)"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             disabled={isGenerating}
           />
+          <p className="mt-1 text-xs text-gray-500">
+            Use simple words and basic punctuation only (letters, numbers, spaces, .,!?-_())
+          </p>
         </div>
 
         <button

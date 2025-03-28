@@ -1,6 +1,6 @@
 # YoPix - 16×16 Pixel Art Converter
 
-YoPix is a web application that converts any image into a true 16×16 pixel art representation using the open-source [Pixel It](https://github.com/giventofly/pixelit) library. The application is built with Next.js and styled with Tailwind CSS, with Firebase handling backend tasks like image storage.
+YoPix is a web application that converts any image into a true 16×16 pixel art representation using the open-source [Pixel It](https://github.com/giventofly/pixelit) library. The application is built with [Next.js](https://nextjs.org/) and styled with [Tailwind CSS](https://tailwindcss.com/).
 
 ## Features
 
@@ -11,9 +11,13 @@ YoPix is a web application that converts any image into a true 16×16 pixel art 
 - **Multiple Image Sources**:
   - **File Upload**: Drag & drop or file selection
   - **URL Input**: Direct image URL input
-  - **Unsplash Search**: Browse and use high-quality photos from Unsplash
-  - **Yoto Icons**: Search and use pixel-perfect icons from Yoto Icons
-  - **AI Generation**: Create custom pixel art using Google Gemini 2.0 Flash
+  - **Unsplash Search**: Browse and use high-quality photos from [Unsplash](https://unsplash.com)
+  - **Yoto Icons**: Search and edit pixel-perfect icons from [Yoto Icons](https://www.yotoicons.com)
+  - **AI Generation**: Create custom pixel art using [Google Gemini 2.0 Flash](https://ai.google.dev/gemini-api) with:
+    - Simple text prompts (e.g., "dog", "car", "house")
+    - Input validation for safe prompt handling
+    - Automatic pixel art style enhancement
+    - Multiple variations per prompt
 - **Advanced Pixel Editing**:
   - **Color Palette**: Choose from 2 to 256 colors
   - **Interactive Editor**: Fine-tune your pixel art with a powerful editor
@@ -22,7 +26,7 @@ YoPix is a web application that converts any image into a true 16×16 pixel art 
 - **Client-Side Processing**: All image conversion happens in the browser
 - **Modern, Responsive UI**: Two-column layout for desktop and optimized for mobile
 - **Preview & Download**: View and download your pixel art creations
-- **Share**: Generate shareable links for your pixel art (requires Firebase setup)
+- **Share**: Download and share your pixel art creations
 
 ## Demo
 
@@ -32,11 +36,10 @@ YoPix is a web application that converts any image into a true 16×16 pixel art 
 
 ### Prerequisites
 
-- Node.js 14.x or later
-- npm or yarn
-- Firebase account (for storage and sharing features)
-- Google AI API key (for AI image generation)
-- Unsplash API key (for image search integration)
+- [Node.js](https://nodejs.org/) 14.x or later
+- [npm](https://www.npmjs.com/) or [yarn](https://yarnpkg.com/)
+- [Google AI](https://ai.google.dev/) API key (for AI image generation)
+- [Unsplash](https://unsplash.com/developers) API key (for image search integration)
 
 ### Installation
 
@@ -52,34 +55,25 @@ YoPix is a web application that converts any image into a true 16×16 pixel art 
    # or
    yarn install
    ```
+   This will automatically download the required AI model files for background removal.
 
-3. Set up Firebase:
-   - Create a Firebase project at [firebase.google.com](https://firebase.google.com)
-   - Enable Firebase Storage
-   - Create a web app in your Firebase project
-   - Copy your Firebase configuration
-
-4. Set up Google AI:
-   - Create a project in Google Cloud Console
-   - Enable the Gemini API
-   - Create API credentials
+3. Set up Google AI:
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Create a new project or select an existing one
+   - Enable the [Gemini API](https://ai.google.dev/gemini-api) in the API Library
+   - Go to Credentials > Create Credentials > API Key
    - Copy your API key
+   - (Optional) Restrict the API key to specific domains/IPs for security
 
-5. Set up Unsplash:
-   - Create a developer account at [Unsplash Developers](https://unsplash.com/developers)
+4. Set up Unsplash:
+   - Go to [Unsplash Developers](https://unsplash.com/developers)
+   - Sign up for a developer account
    - Create a new application
-   - Copy your Access Key
+   - Note your Access Key
+   - Review the [API Guidelines](https://unsplash.com/documentation) for usage limits
 
-6. Create a `.env.local` file in the root directory with your configuration:
+5. Create a `.env.local` file in the root directory with your configuration:
    ```
-   NEXT_PUBLIC_FIREBASE_API_KEY=your-api-key
-   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-auth-domain
-   NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
-   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-storage-bucket
-   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-messaging-sender-id
-   NEXT_PUBLIC_FIREBASE_APP_ID=your-app-id
-   NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your-measurement-id
-   
    # Google AI API credentials
    GOOGLE_AI_API_KEY=your_google_ai_api_key_here
    
@@ -87,14 +81,32 @@ YoPix is a web application that converts any image into a true 16×16 pixel art 
    UNSPLASH_ACCESS_KEY=your_unsplash_access_key_here
    ```
 
-7. Run the development server:
+6. Run the development server:
    ```bash
    npm run dev
    # or
    yarn dev
    ```
 
-8. Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
+7. Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
+
+## Development Utilities
+
+### Cleaning Sensitive Data
+If you accidentally commit sensitive data (like API keys) to your repository, you can use the `clean-repo.sh` script in the `dev-scripts` directory to remove it from the Git history. This script uses [BFG Repo Cleaner](https://rtyley.github.io/bfg-repo-cleaner/) to safely remove sensitive data.
+
+⚠️ **Warning**: This script rewrites Git history. Make sure you have a backup before using it!
+
+```bash
+# From the project root
+./dev-scripts/clean-repo.sh
+```
+
+### Manual Model Download
+If you need to manually download the AI model files (e.g., after clearing the cache), you can run:
+```bash
+node scripts/download-models.js
+```
 
 ## How It Works
 
@@ -121,7 +133,7 @@ YoPix uses a multi-stage process to create high-quality pixel art:
 
 4. **Preview and Download**:
    - The processed image is displayed in the UI with an upscaled view for better visibility
-   - The user can download the 16×16 pixel art as a PNG or share it via Firebase Storage
+   - The user can download the 16×16 pixel art as a PNG
 
 ## Deployment
 
@@ -129,41 +141,12 @@ YoPix uses a multi-stage process to create high-quality pixel art:
 
 The easiest way to deploy YoPix is to use the [Vercel Platform](https://vercel.com):
 
-1. Push your code to a GitHub repository.
-2. Import the project into Vercel.
-3. Add your environment variables (Firebase, Google AI, and Unsplash configuration).
-4. Deploy!
-
-### Firebase Hosting
-
-You can also deploy to Firebase Hosting:
-
-1. Install the Firebase CLI:
-   ```bash
-   npm install -g firebase-tools
-   ```
-
-2. Login to Firebase:
-   ```bash
-   firebase login
-   ```
-
-3. Initialize your project:
-   ```bash
-   firebase init
-   ```
-
-4. Build your Next.js app:
-   ```bash
-   npm run build
-   # or
-   yarn build
-   ```
-
-5. Deploy to Firebase:
-   ```bash
-   firebase deploy
-   ```
+1. Push your code to a [GitHub](https://github.com) repository
+2. Go to [Vercel Dashboard](https://vercel.com/dashboard)
+3. Click "New Project"
+4. Import your GitHub repository
+5. Add your environment variables (Google AI and Unsplash configuration)
+6. Click "Deploy"
 
 ## Dependencies & Acknowledgments
 
@@ -175,17 +158,16 @@ You can also deploy to Firebase Hosting:
 - [Pixel It](https://github.com/giventofly/pixelit) - The open-source library that powers the pixel art conversion
 - [Next.js](https://nextjs.org/) - The React framework used for building the UI
 - [Tailwind CSS](https://tailwindcss.com/) - For styling the application
-- [Firebase](https://firebase.google.com/) - For backend services and storage
 - [Unsplash API](https://unsplash.com/developers) - For high-quality, free-to-use images
 - [Yoto Icons](https://www.yotoicons.com/) - For high-quality pixel art icons
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please feel free to submit a Pull Request. See our [Contributing Guidelines](CONTRIBUTING.md) for more details.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Environment Setup
 
@@ -197,8 +179,86 @@ This project uses environment variables for configuration. To set up your local 
    ```
 
 2. Fill in your credentials in the `.env.local` file:
-   - For Firebase configuration, create a project at [Firebase Console](https://console.firebase.google.com/)
    - For Google AI API, create a project at [Google Cloud Console](https://console.cloud.google.com/)
    - For Unsplash API, register for a developer account at [Unsplash Developers](https://unsplash.com/developers)
 
-3. Make sure not to commit your `.env.local` file with real credentials to GitHub!
+3. Make sure not to commit your `.env.local` file with real credentials to GitHub! See [GitHub's documentation](https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files) for more information about ignoring files.
+
+### AI Image Generation
+
+The application includes built-in prompt enhancement for AI image generation. When using the AI generation feature:
+
+1. **Input Requirements**:
+   - Use simple, clear descriptions (e.g., "dog", "happy cat", "red car")
+   - Only alphanumeric characters and basic punctuation are allowed (.,!?-_())
+   - Maximum prompt length: 500 characters
+
+2. **Automatic Enhancement**:
+   The application automatically enhances your prompt to generate pixel art by adding:
+   - Specific pixel art style requirements
+   - Size and composition guidelines
+   - Color and contrast specifications
+   - Retro gaming aesthetic requirements
+
+3. **Multiple Variations**:
+   - Each prompt generates multiple variations
+   - Select your preferred version to convert to 16×16 pixel art
+
+4. **Customizing the Prompt Template**:
+   You can customize how your prompts are enhanced by modifying the `enhancePrompt` function in `pages/api/generate-ai-image.js`:
+   ```javascript
+   const enhancePrompt = (userPrompt) => {
+     return `Create a 1:1 pixel art icon of a ${userPrompt} on a black background, with these strict requirements:
+     - Always output a square image on a black background.
+     - Orient the ${userPrompt} in a way that it is large and takes up the majority of the image frame.
+     // ... modify or add your requirements here ...
+     `;
+   };
+   ```
+   Common customizations include:
+   - Changing the background color (e.g., from black to white)
+   - Adjusting the size and positioning requirements
+   - Modifying the color palette guidelines
+   - Adding specific style requirements (e.g., "cyberpunk", "minimalist", etc.)
+   
+   ⚠️ **Note**: When customizing the prompt template:
+   - Keep the requirements clear and specific
+   - Maintain consistency with pixel art aesthetics
+   - Test your changes with various inputs
+   - Remember that the final output will be converted to 16×16 pixels
+
+### Rate Limiting Configuration
+
+The application includes rate limiting to prevent abuse of the API endpoints. You can configure the rate limiting behavior using the following environment variables:
+
+```bash
+# Rate limiting configuration
+RATE_LIMIT_ENABLED=true           # Enable/disable rate limiting
+RATE_LIMIT_WINDOW_MS=900000      # Time window in milliseconds (default: 15 minutes)
+RATE_LIMIT_MAX_REQUESTS=100      # Maximum requests per window (default: 100)
+```
+
+#### Development Mode
+For local development, you can disable rate limiting by setting:
+```bash
+RATE_LIMIT_ENABLED=false
+```
+
+#### Production Mode
+For production deployments, it's recommended to:
+1. Enable rate limiting (`RATE_LIMIT_ENABLED=true`)
+2. Adjust the window time and request limits based on your needs
+3. Monitor the rate limit headers in responses:
+   - `X-RateLimit-Limit`: Maximum requests per window
+   - `X-RateLimit-Remaining`: Remaining requests in current window
+   - `X-RateLimit-Reset`: Time when the rate limit window resets
+
+#### Rate Limit Headers
+The API includes standard rate limit headers:
+- `X-RateLimit-Limit`: Maximum number of requests allowed per window
+- `X-RateLimit-Remaining`: Number of requests remaining in the current window
+- `X-RateLimit-Reset`: Time when the rate limit window resets (Unix timestamp)
+
+When rate limits are exceeded, the API will return:
+- Status code: 429 (Too Many Requests)
+- Response body: `{ "error": "Too many requests from this IP, please try again later." }`

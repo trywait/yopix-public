@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 
-export default function YotoIconsSearch({ onIconSelect, onClose }) {
+export default function YotoIconsSearch({ onIconSelect, onClose, onOpenAiGenerator }) {
   const [query, setQuery] = useState('');
   const [icons, setIcons] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -132,7 +132,17 @@ export default function YotoIconsSearch({ onIconSelect, onClose }) {
 
       {!loading && hasSearched && icons.length === 0 && query && (
         <div className="text-center text-gray-500 mt-8">
-          No icons found. Try a different search term.
+          No icons found. Try a different search term.{' '}
+          <button
+            onClick={() => {
+              const currentQuery = query.trim();
+              onClose();
+              onOpenAiGenerator(currentQuery);
+            }}
+            className="text-blue-500 hover:underline"
+          >
+            Try Generating with AI
+          </button>
         </div>
       )}
     </div>
