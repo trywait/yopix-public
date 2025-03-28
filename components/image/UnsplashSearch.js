@@ -209,17 +209,17 @@ const UnsplashSearch = ({ onImageSelect, onClose }) => {
             <button
               onClick={() => handlePageChange(page - 1)}
               disabled={page === 1 || loading}
-              className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white"
+              className="flex items-center gap-2 px-4 py-2 rounded-md transition-colors text-gray-700 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:hover:bg-gray-100"
             >
               Previous
             </button>
-            <span className="px-4 py-2">
+            <span className="px-4 py-2 text-gray-700 font-medium">
               Page {page} of {totalPages}
             </span>
             <button
               onClick={() => handlePageChange(page + 1)}
               disabled={page === totalPages || loading}
-              className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white"
+              className="flex items-center gap-2 px-4 py-2 rounded-md transition-colors text-gray-700 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:hover:bg-gray-100"
             >
               Next
             </button>
