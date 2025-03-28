@@ -446,7 +446,10 @@ export default function Home() {
 
       <main className="flex-grow container mx-auto p-4 md:p-6">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">YoPix</h1>
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <img src="/logo.svg" alt="YoPix Logo" className="w-10 h-10" />
+            <h1 className="text-4xl font-bold text-gray-900">YoPix</h1>
+          </div>
           <p className="text-xl text-gray-600">Transform your images into true 16x16 pixel art</p>
         </div>
 

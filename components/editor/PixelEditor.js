@@ -1585,9 +1585,11 @@ const PixelEditor = ({
                     onClick={() => {
                       setSelectedColor(color);
                       setCustomColor(color.hex);
-                      if (!isBrush && !isEyedropper && !isPaintBucket) {
-                        setIsBrush(true);
-                      }
+                      // Disable eraser and other tools, enable brush
+                      setIsEraser(false);
+                      setIsEyedropper(false);
+                      setIsPaintBucket(false);
+                      setIsBrush(true);
                     }}
                     title={color.hex}
                   />
