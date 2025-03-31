@@ -33,7 +33,7 @@ YoPix is a web application that converts any image into a true 16×16 pixel art 
 
 ## Demo
 
-[Live Demo](https://yopix.vercel.app) (Replace with your actual deployment URL)
+[Live Demo](https://yopix.ordinarytools.com/)
 
 ## Getting Started
 
