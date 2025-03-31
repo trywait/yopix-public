@@ -706,6 +706,25 @@ export default function Home() {
 
       <footer className="bg-gray-100 py-6 w-full mt-auto">
         <div className="container mx-auto px-4 text-center text-gray-500">
+          <div className="flex justify-center space-x-4 mb-2">
+            <a 
+              href="https://github.com/trywait/yopix-public" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              Contribute to the project
+            </a>
+            <span className="text-gray-400">•</span>
+            <a 
+              href="https://yopix.ordinarytools.com/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              View Live Project
+            </a>
+          </div>
           <p>© 2025 YoPix. All rights reserved.</p>
         </div>
       </footer>
